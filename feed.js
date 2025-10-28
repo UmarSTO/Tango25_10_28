@@ -143,11 +143,21 @@ function mainFilter1(messageObj) {
                     const existingIndex = mainFilterResults.findIndex(item => item.s === messageSymbol);
                     const volume = messageObj.data.v ? parseFloat(messageObj.data.v) : 0;
                     
+                    // Extract additional values
+                    const ap = messageObj.data.ap ? parseFloat(messageObj.data.ap) : 0;
+                    const bp = messageObj.data.bp ? parseFloat(messageObj.data.bp) : 0;
+                    const av = messageObj.data.av ? parseFloat(messageObj.data.av) : 0;
+                    const bv = messageObj.data.bv ? parseFloat(messageObj.data.bv) : 0;
+                    
                     if (existingIndex !== -1) {
                         // Update existing entry
                         mainFilterResults[existingIndex] = {
                             s: messageSymbol,
                             v: volume,
+                            ap: ap,
+                            bp: bp,
+                            av: av,
+                            bv: bv,
                             timestamp: new Date().toLocaleTimeString()
                         };
                     } else {
@@ -155,6 +165,10 @@ function mainFilter1(messageObj) {
                         mainFilterResults.push({
                             s: messageSymbol,
                             v: volume,
+                            ap: ap,
+                            bp: bp,
+                            av: av,
+                            bv: bv,
                             timestamp: new Date().toLocaleTimeString()
                         });
                         bottomInfo.mainFilterCount++;
@@ -198,12 +212,22 @@ function processMessageFilters(rawMessage) {
                         // Find if symbol already exists
                         const existingIndex = filteredSymbols.findIndex(item => item.s === symbol);
                         
+                        // Extract additional values
+                        const ap = messageObj.data.ap ? parseFloat(messageObj.data.ap) : 0;
+                        const bp = messageObj.data.bp ? parseFloat(messageObj.data.bp) : 0;
+                        const av = messageObj.data.av ? parseFloat(messageObj.data.av) : 0;
+                        const bv = messageObj.data.bv ? parseFloat(messageObj.data.bv) : 0;
+                        
                         if (existingIndex !== -1) {
-                            // Update existing symbol with new volume value
+                            // Update existing symbol with new values
                             filteredSymbols[existingIndex].v = volume;
+                            filteredSymbols[existingIndex].ap = ap;
+                            filteredSymbols[existingIndex].bp = bp;
+                            filteredSymbols[existingIndex].av = av;
+                            filteredSymbols[existingIndex].bv = bv;
                         } else {
-                            // Add new symbol with volume
-                            filteredSymbols.push({ s: symbol, v: volume });
+                            // Add new symbol with all values
+                            filteredSymbols.push({ s: symbol, v: volume, ap: ap, bp: bp, av: av, bv: bv });
                             bottomInfo.filteredCount++;
                         }
                         
@@ -253,11 +277,11 @@ function updateBottomPanel() {
     
     // Display table header
     process.stdout.write(moveCursor(bottomHalfStart + 2, 1));
-    process.stdout.write(`${'Filtered Symbol'.padEnd(18)} ${'Volume'.padEnd(12)} ${'Main Symbol'.padEnd(18)} ${'Volume'.padEnd(12)}`);
+    process.stdout.write(`${'Filtered Symbol'.padEnd(16)} ${'Volume'.padEnd(10)} ${'Main Symbol'.padEnd(16)} ${'Volume'.padEnd(10)} ${'Major'.padEnd(10)} ${'Minor'.padEnd(10)}`);
     
     // Display table separator
     process.stdout.write(moveCursor(bottomHalfStart + 3, 1));
-    process.stdout.write('─'.repeat(62));
+    process.stdout.write('─'.repeat(84));
     
     // Display table rows (up to 10 rows)
     let displayLine = bottomHalfStart + 4;
@@ -271,21 +295,37 @@ function updateBottomPanel() {
             const matchingMain = findMatchingMainFilter(filteredItem);
             
             // Column 1: Filtered Symbol
-            const filteredSymbol = filteredItem.s.padEnd(18);
+            const filteredSymbol = filteredItem.s.padEnd(16);
             
             // Column 2: Filtered Volume
-            const filteredVolume = filteredItem.v.toLocaleString().padEnd(12);
+            const filteredVolume = filteredItem.v.toLocaleString().padEnd(10);
             
             // Column 3: Matching Main Symbol (or empty if no match)
-            const mainSymbol = matchingMain ? matchingMain.s.padEnd(18) : ''.padEnd(18);
+            const mainSymbol = matchingMain ? matchingMain.s.padEnd(16) : ''.padEnd(16);
             
             // Column 4: Main Volume (or empty if no match)
-            const mainVolume = matchingMain ? matchingMain.v.toLocaleString().padEnd(12) : ''.padEnd(12);
+            const mainVolume = matchingMain ? matchingMain.v.toLocaleString().padEnd(10) : ''.padEnd(10);
             
-            process.stdout.write(`${filteredSymbol} ${filteredVolume} ${mainSymbol} ${mainVolume}`);
+            // Column 5: Major (filteredSymbol.bp - mainFilterResults.ap)
+            let majorValue = '';
+            if (matchingMain && filteredItem.bp && matchingMain.ap) {
+                const major = filteredItem.bp - matchingMain.ap;
+                majorValue = major.toFixed(4);
+            }
+            const majorColumn = majorValue.padEnd(10);
+            
+            // Column 6: Minor (mainFilterResults.bp - filteredSymbol.ap) - absolute value
+            let minorValue = '';
+            if (matchingMain && matchingMain.bp && filteredItem.ap) {
+                const minor = Math.abs(matchingMain.bp - filteredItem.ap);
+                minorValue = minor.toFixed(4);
+            }
+            const minorColumn = minorValue.padEnd(10);
+            
+            process.stdout.write(`${filteredSymbol} ${filteredVolume} ${mainSymbol} ${mainVolume} ${majorColumn} ${minorColumn}`);
         } else {
             // Empty row
-            process.stdout.write(' '.repeat(62));
+            process.stdout.write(' '.repeat(84));
         }
         
         displayLine++;
