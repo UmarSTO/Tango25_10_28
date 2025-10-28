@@ -102,6 +102,21 @@ function filter2(messageObj) {
     return false;
 }
 
+// Banned postfix array
+const bannedPostfixes = ['OCT', 'OCTB'];
+
+// Helper function to get symbol postfix (after '-' character)
+function getSymbolPostfix(symbol) {
+    const dashIndex = symbol.indexOf('-');
+    return dashIndex !== -1 ? symbol.substring(dashIndex + 1) : '';
+}
+
+// Check if symbol has a banned postfix
+function hasBannedPostfix(symbol) {
+    const postfix = getSymbolPostfix(symbol);
+    return bannedPostfixes.includes(postfix);
+}
+
 // Helper function to get symbol prefix (before '-' character)
 function getSymbolPrefix(symbol) {
     const dashIndex = symbol.indexOf('-');
@@ -178,24 +193,27 @@ function processMessageFilters(rawMessage) {
                     const symbol = messageObj.data.s;
                     const volume = parseFloat(messageObj.data.v);
                     
-                    // Find if symbol already exists
-                    const existingIndex = filteredSymbols.findIndex(item => item.s === symbol);
-                    
-                    if (existingIndex !== -1) {
-                        // Update existing symbol with new volume value
-                        filteredSymbols[existingIndex].v = volume;
-                    } else {
-                        // Add new symbol with volume
-                        filteredSymbols.push({ s: symbol, v: volume });
-                        bottomInfo.filteredCount++;
-                    }
-                    
-                    // Sort array by volume in descending order
-                    filteredSymbols.sort((a, b) => b.v - a.v);
-                    
-                    // Keep only top 10 symbols (limit array size)
-                    if (filteredSymbols.length > 10) {
-                        filteredSymbols = filteredSymbols.slice(0, 10);
+                    // Check if symbol has a banned postfix
+                    if (!hasBannedPostfix(symbol)) {
+                        // Find if symbol already exists
+                        const existingIndex = filteredSymbols.findIndex(item => item.s === symbol);
+                        
+                        if (existingIndex !== -1) {
+                            // Update existing symbol with new volume value
+                            filteredSymbols[existingIndex].v = volume;
+                        } else {
+                            // Add new symbol with volume
+                            filteredSymbols.push({ s: symbol, v: volume });
+                            bottomInfo.filteredCount++;
+                        }
+                        
+                        // Sort array by volume in descending order
+                        filteredSymbols.sort((a, b) => b.v - a.v);
+                        
+                        // Keep only top 10 symbols (limit array size)
+                        if (filteredSymbols.length > 10) {
+                            filteredSymbols = filteredSymbols.slice(0, 10);
+                        }
                     }
                 }
             }
@@ -207,6 +225,15 @@ function processMessageFilters(rawMessage) {
     } catch (error) {
         // Ignore JSON parsing errors
     }
+}
+
+// Helper function to find matching MainFilter result by prefix
+function findMatchingMainFilter(filteredSymbol) {
+    const filteredPrefix = getSymbolPrefix(filteredSymbol.s);
+    return mainFilterResults.find(mainItem => {
+        const mainPrefix = getSymbolPrefix(mainItem.s);
+        return filteredPrefix === mainPrefix;
+    });
 }
 
 // Update bottom panel
@@ -224,48 +251,44 @@ function updateBottomPanel() {
     process.stdout.write(moveCursor(bottomHalfStart + 1, 1));
     process.stdout.write(`Total: ${bottomInfo.messageCount} | Filtered: ${bottomInfo.filteredCount} | MainFilter: ${bottomInfo.mainFilterCount}`);
     
-    // Calculate available space for both sections
-    const availableLines = terminalHeight - bottomHalfStart - 2;
-    const halfSpace = Math.floor(availableLines / 2);
-    
-    // Display filtered symbols array sorted by volume
+    // Display table header
     process.stdout.write(moveCursor(bottomHalfStart + 2, 1));
-    process.stdout.write(`Filtered Symbols (volume desc):`);
+    process.stdout.write(`${'Filtered Symbol'.padEnd(18)} ${'Volume'.padEnd(12)} ${'Main Symbol'.padEnd(18)} ${'Volume'.padEnd(12)}`);
     
-    let displayLine = bottomHalfStart + 3;
-    let symbolsDisplayed = 0;
-    if (filteredSymbols.length > 0) {
-        filteredSymbols.forEach((item, index) => {
-            if (displayLine <= bottomHalfStart + 2 + halfSpace && symbolsDisplayed < halfSpace - 1) {
-                process.stdout.write(moveCursor(displayLine, 1));
-                process.stdout.write(`${index + 1}. ${item.s}: ${item.v.toLocaleString()}`);
-                displayLine++;
-                symbolsDisplayed++;
-            }
-        });
-    } else {
+    // Display table separator
+    process.stdout.write(moveCursor(bottomHalfStart + 3, 1));
+    process.stdout.write('─'.repeat(62));
+    
+    // Display table rows (up to 10 rows)
+    let displayLine = bottomHalfStart + 4;
+    const maxRows = Math.min(10, Math.max(filteredSymbols.length, terminalHeight - displayLine - 1));
+    
+    for (let i = 0; i < maxRows; i++) {
         process.stdout.write(moveCursor(displayLine, 1));
-        process.stdout.write('No symbols found yet...');
+        
+        if (i < filteredSymbols.length) {
+            const filteredItem = filteredSymbols[i];
+            const matchingMain = findMatchingMainFilter(filteredItem);
+            
+            // Column 1: Filtered Symbol
+            const filteredSymbol = filteredItem.s.padEnd(18);
+            
+            // Column 2: Filtered Volume
+            const filteredVolume = filteredItem.v.toLocaleString().padEnd(12);
+            
+            // Column 3: Matching Main Symbol (or empty if no match)
+            const mainSymbol = matchingMain ? matchingMain.s.padEnd(18) : ''.padEnd(18);
+            
+            // Column 4: Main Volume (or empty if no match)
+            const mainVolume = matchingMain ? matchingMain.v.toLocaleString().padEnd(12) : ''.padEnd(12);
+            
+            process.stdout.write(`${filteredSymbol} ${filteredVolume} ${mainSymbol} ${mainVolume}`);
+        } else {
+            // Empty row
+            process.stdout.write(' '.repeat(62));
+        }
+        
         displayLine++;
-    }
-    
-    // Display MainFilter1 results
-    const mainFilterStart = bottomHalfStart + 3 + halfSpace;
-    process.stdout.write(moveCursor(mainFilterStart, 1));
-    process.stdout.write(`MainFilter1 Results (sorted by volume desc):`);
-    
-    displayLine = mainFilterStart + 1;
-    if (mainFilterResults.length > 0) {
-        mainFilterResults.forEach((item, index) => {
-            if (displayLine <= terminalHeight - 1) {
-                process.stdout.write(moveCursor(displayLine, 1));
-                process.stdout.write(`${index + 1}. ${item.s}: ${item.v.toLocaleString()}`);
-                displayLine++;
-            }
-        });
-    } else {
-        process.stdout.write(moveCursor(displayLine, 1));
-        process.stdout.write('No MainFilter matches yet...');
     }
 }
 
