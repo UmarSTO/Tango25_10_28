@@ -20,6 +20,9 @@ const clearLine = '\x1b[2K';
 let messages = [];
 let filteredSymbols = []; // Array to store objects with 's' and 'v' values from filtered messages
 let mainFilterResults = []; // Array to store results from MainFilter1
+let majorValues = []; // Array to store Major values with symbol combinations
+let minorValues = []; // Array to store Minor values with symbol combinations
+
 let bottomInfo = {
     status: 'Starting...',
     time: new Date().toLocaleTimeString(),
@@ -275,13 +278,13 @@ function updateBottomPanel() {
     process.stdout.write(moveCursor(bottomHalfStart + 1, 1));
     process.stdout.write(`Total: ${bottomInfo.messageCount} | Filtered: ${bottomInfo.filteredCount} | MainFilter: ${bottomInfo.mainFilterCount}`);
     
-    // Display table header
+    // Display table header with colors
     process.stdout.write(moveCursor(bottomHalfStart + 2, 1));
-    process.stdout.write(`${'Filtered Symbol'.padEnd(16)} ${'Volume'.padEnd(10)} ${'Main Symbol'.padEnd(16)} ${'Volume'.padEnd(10)} ${'Major'.padEnd(10)} ${'Minor'.padEnd(10)}`);
+    process.stdout.write(`\x1b[1m\x1b[36m${'Filtered Symbol'.padEnd(16)} ${'Volume'.padEnd(10)} ${'Main Symbol'.padEnd(16)} ${'Volume'.padEnd(10)} ${'Major'.padEnd(10)} ${'Minor'.padEnd(10)} ${'High Major'.padEnd(10)} ${'Low Minor'.padEnd(10)}\x1b[0m`);
     
     // Display table separator
     process.stdout.write(moveCursor(bottomHalfStart + 3, 1));
-    process.stdout.write('─'.repeat(84));
+    process.stdout.write('\x1b[90m' + '─'.repeat(104) + '\x1b[0m');
     
     // Display table rows (up to 10 rows)
     let displayLine = bottomHalfStart + 4;
@@ -308,24 +311,76 @@ function updateBottomPanel() {
             
             // Column 5: Major (filteredSymbol.bp - mainFilterResults.ap)
             let majorValue = '';
+            let minorValue = '';
+            let highestMajorValue = '';
+            let lowestMinorValue = '';
+            
             if (matchingMain && filteredItem.bp && matchingMain.ap) {
                 const major = filteredItem.bp - matchingMain.ap;
                 majorValue = major.toFixed(4);
+                
+                // Create symbol combination key
+                const symbolKey = `${filteredItem.s}-${matchingMain.s}`;
+                
+                // Store Major value in tracking array
+                majorValues.push({ key: symbolKey, value: major });
+                
+                // Calculate highest Major for this symbol combination
+                const majorForSymbol = majorValues.filter(item => item.key === symbolKey).map(item => item.value);
+                const highestMajor = Math.max(...majorForSymbol);
+                highestMajorValue = highestMajor.toFixed(4);
             }
             const majorColumn = majorValue.padEnd(10);
             
             // Column 6: Minor (mainFilterResults.bp - filteredSymbol.ap) - absolute value
-            let minorValue = '';
             if (matchingMain && matchingMain.bp && filteredItem.ap) {
                 const minor = Math.abs(matchingMain.bp - filteredItem.ap);
                 minorValue = minor.toFixed(4);
+                
+                // Create symbol combination key
+                const symbolKey = `${filteredItem.s}-${matchingMain.s}`;
+                
+                // Store Minor value in tracking array
+                minorValues.push({ key: symbolKey, value: minor });
+                
+                // Calculate lowest Minor for this symbol combination
+                const minorForSymbol = minorValues.filter(item => item.key === symbolKey).map(item => item.value);
+                const lowestMinor = Math.min(...minorForSymbol);
+                lowestMinorValue = lowestMinor.toFixed(4);
             }
             const minorColumn = minorValue.padEnd(10);
             
-            process.stdout.write(`${filteredSymbol} ${filteredVolume} ${mainSymbol} ${mainVolume} ${majorColumn} ${minorColumn}`);
+            // Column 7: Highest Major for this symbol combination
+            const highMajorColumn = highestMajorValue.padEnd(10);
+            
+            // Column 8: Lowest Minor for this symbol combination
+            const lowMinorColumn = lowestMinorValue.padEnd(10);
+            
+            // Apply row coloring and highlight important values
+            let majorDisplay = majorColumn;
+            let minorDisplay = minorColumn;
+            let highMajorDisplay = highMajorColumn;
+            let lowMinorDisplay = lowMinorColumn;
+            
+            // Highlight high values in green, low values in red
+            if (majorValue) {
+                const majorNum = parseFloat(majorValue);
+                if (majorNum > 0) majorDisplay = `\x1b[32m${majorColumn}\x1b[0m`;
+                else if (majorNum < 0) majorDisplay = `\x1b[31m${majorColumn}\x1b[0m`;
+            }
+            
+            if (highestMajorValue) {
+                highMajorDisplay = `\x1b[1m\x1b[33m${highMajorColumn}\x1b[0m`; // Bold yellow for highest
+            }
+            
+            if (lowestMinorValue) {
+                lowMinorDisplay = `\x1b[1m\x1b[32m${lowMinorColumn}\x1b[0m`; // Bold green for lowest
+            }
+            
+            process.stdout.write(`${filteredSymbol} ${filteredVolume} ${mainSymbol} ${mainVolume} ${majorDisplay} ${minorDisplay} ${highMajorDisplay} ${lowMinorDisplay}`);
         } else {
             // Empty row
-            process.stdout.write(' '.repeat(84));
+            process.stdout.write(' '.repeat(104));
         }
         
         displayLine++;
@@ -368,15 +423,18 @@ ws.on('close', () => {
     updateBottomPanel();
 });
 
+
+
 // Update time every second
 setInterval(() => {
     bottomInfo.time = new Date().toLocaleTimeString();
     updateBottomPanel();
 }, 1000);
 
+
+
 // Handle graceful exit
 process.on('SIGINT', () => {
-    // process.stdout.write(clearScreen);
     process.stdout.write(moveCursor(1, 1));
     console.log('Application terminated');
     process.exit(0);
