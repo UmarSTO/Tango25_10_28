@@ -17,11 +17,37 @@ import time
 import sys
 import psutil
 import subprocess
+import socketserver
+import threading
+import socket
 from typing import Optional, List, Dict
 
 # Configure pyautogui safety settings
 pyautogui.PAUSE = 0.1  # Add a small pause between actions
 pyautogui.FAILSAFE = True  # Move mouse to top-left corner to abort
+
+
+class TriggerHandler(socketserver.BaseRequestHandler):
+    """Handle incoming socket connections for F4 triggers."""
+    
+    def handle(self):
+        """Handle incoming trigger message."""
+        try:
+            # Receive data from client
+            data = self.request.recv(1024).decode('utf-8').strip()
+            
+            if data == "TRIGGER_F4":
+                # Set the global trigger flag
+                self.server.controller.trigger_received = True
+                
+                # Send acknowledgment back to client
+                self.request.sendall(b"F4_TRIGGERED\n")
+                print("Trigger received from Node script - sending F4...")
+            else:
+                self.request.sendall(b"UNKNOWN_COMMAND\n")
+                
+        except Exception as e:
+            print(f"Error handling socket request: {e}")
 
 
 class WindowsAppController:
@@ -30,6 +56,9 @@ class WindowsAppController:
     def __init__(self):
         """Initialize the controller with safety settings."""
         self.setup_safety()
+        self.trigger_received = False
+        self.server = None
+        self.server_thread = None
     
     def setup_safety(self):
         """Set up safety measures to prevent runaway automation."""
@@ -232,6 +261,50 @@ class WindowsAppController:
             time.sleep(1)
         if seconds != int(seconds):
             time.sleep(seconds - int(seconds))
+    
+    def start_socket_server(self, port: int = 9999):
+        """Start the socket server to listen for triggers."""
+        try:
+            # Create server
+            self.server = socketserver.TCPServer(("localhost", port), TriggerHandler)
+            self.server.controller = self  # Pass reference to controller
+            
+            # Start server in separate thread
+            self.server_thread = threading.Thread(target=self.server.serve_forever)
+            self.server_thread.daemon = True  # Dies when main thread dies
+            self.server_thread.start()
+            
+            print(f"Socket server started on localhost:{port}")
+            print("Waiting for trigger from Node script...")
+            return True
+            
+        except Exception as e:
+            print(f"Error starting socket server: {e}")
+            return False
+    
+    def stop_socket_server(self):
+        """Stop the socket server."""
+        if self.server:
+            self.server.shutdown()
+            self.server.server_close()
+            print("Socket server stopped")
+    
+    def wait_for_trigger(self, timeout: Optional[float] = None):
+        """Wait for trigger from Node script."""
+        self.trigger_received = False
+        start_time = time.time()
+        
+        print("Waiting for trigger... (Press Ctrl+C to cancel)")
+        
+        while not self.trigger_received:
+            time.sleep(0.1)  # Check every 100ms
+            
+            # Check for timeout
+            if timeout and (time.time() - start_time) > timeout:
+                print(f"Timeout after {timeout} seconds")
+                return False
+                
+        return True
 
 
 
@@ -274,19 +347,43 @@ def show_application_selector(controller: WindowsAppController):
 
 
 def control_application(controller: WindowsAppController, app_info: Dict[str, str]):
-    """Control application with keystrokes."""
+    """Control application with socket-triggered keystrokes."""
     print(f"\n=== CONTROLLING: {app_info['display_name']} ===")
     
     # Automatically focus the application
     controller.focus_application(app_info)
+    print(f"Application '{app_info['display_name']}' is now focused")
     
-    # Send F4 keystroke to the focused application
-    print("Sending F4 keystroke to focused application...")
-    controller.send_hotkey('f4')
-    print(f"F4 keystroke sent to {app_info['display_name']}")
+    # Start socket server
+    if not controller.start_socket_server():
+        print("Failed to start socket server. Returning to main menu.")
+        return
     
+    try:
+        # Wait for trigger from Node script
+        print("\nSocket server is running. Send 'TRIGGER_F4' message to localhost:9999")
+        print("Example Node.js code:")
+        print("const net = require('net');")
+        print("const client = net.createConnection(9999, 'localhost');")
+        print("client.write('TRIGGER_F4');")
+        
+        if controller.wait_for_trigger(timeout=300):  # 5 minute timeout
+            # Send F4 keystroke to the focused application
+            print("Sending F4 keystroke to focused application...")
+            controller.send_hotkey('f4')
+            print(f"F4 keystroke sent to {app_info['display_name']}")
+        else:
+            print("No trigger received within timeout period")
+            
+    except KeyboardInterrupt:
+        print("\nOperation cancelled by user")
+        
+    finally:
+        # Clean up
+        controller.stop_socket_server()
+        
     # Interactive keystroke sender
-    print(f"\nNow you can send additional keystrokes to: {app_info['display_name']}")
+    print(f"\nYou can now send additional keystrokes to: {app_info['display_name']}")
     print("Commands:")
     print("- Single keys: f1, f2, f3, f4, enter, space, esc, tab")
     print("- Hotkeys: ctrl+c, alt+f4, win+d, ctrl+shift+n")
