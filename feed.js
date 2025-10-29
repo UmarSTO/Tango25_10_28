@@ -1,4 +1,6 @@
 const WebSocket = require('ws');
+const path = require('path');
+const { exec } = require('child_process');
 
 const wsUrl = 'wss://csapis.com/2.0/market/feed/full';
 const headers = {
@@ -12,6 +14,100 @@ let filteredSymbols = []; // Array to store objects with 's' and 'v' values from
 let mainFilterResults = []; // Array to store results from MainFilter1
 let majorValues = []; // Array to store Major values with symbol combinations
 let minorValues = []; // Array to store Minor values with symbol combinations
+
+// Histogram tracking
+let histogramWindowOpened = false;
+let histogramServer = null;
+let histogramClients = [];
+
+// Function to create histogram WebSocket server
+function createHistogramServer() {
+    histogramServer = new WebSocket.Server({ port: 8080 });
+    
+    histogramServer.on('connection', (ws) => {
+        console.log('Histogram window connected');
+        histogramClients.push(ws);
+        
+        // Send initial data if available
+        sendHistogramUpdate();
+        
+        ws.on('close', () => {
+            console.log('Histogram window disconnected');
+            histogramClients = histogramClients.filter(client => client !== ws);
+        });
+    });
+    
+    console.log('Histogram WebSocket server started on port 8080');
+}
+
+// Function to open histogram window
+function openHistogramWindow() {
+    if (histogramWindowOpened) return;
+    
+    histogramWindowOpened = true;
+    createHistogramServer();
+    
+    // Open the HTML file in default browser
+    const histogramPath = path.join(__dirname, 'histogram.html');
+    exec(`start "" "${histogramPath}"`, (error) => {
+        if (error) {
+            console.error('Error opening histogram window:', error);
+        } else {
+            console.log('Histogram window opened');
+        }
+    });
+}
+
+// Function to send histogram data to connected clients
+function sendHistogramUpdate() {
+    if (histogramClients.length === 0) return;
+    
+    // Get currently active symbol combinations from top 20 filtered symbols
+    const activeSymbolKeys = new Set();
+    for (let i = 0; i < Math.min(20, filteredSymbols.length); i++) {
+        const filteredItem = filteredSymbols[i];
+        const matchingMain = findMatchingMainFilter(filteredItem);
+        if (matchingMain) {
+            const symbolKey = `${filteredItem.s}-${matchingMain.s}`;
+            activeSymbolKeys.add(symbolKey);
+        }
+    }
+    
+    // Organize data by active symbol combinations only
+    const symbolCombinations = {};
+    
+    // Process majorValues for active symbols only
+    majorValues.forEach(item => {
+        if (activeSymbolKeys.has(item.key)) {
+            if (!symbolCombinations[item.key]) {
+                symbolCombinations[item.key] = { majorValues: [], minorValues: [] };
+            }
+            symbolCombinations[item.key].majorValues.push(item.value);
+        }
+    });
+    
+    // Process minorValues for active symbols only
+    minorValues.forEach(item => {
+        if (activeSymbolKeys.has(item.key)) {
+            if (!symbolCombinations[item.key]) {
+                symbolCombinations[item.key] = { majorValues: [], minorValues: [] };
+            }
+            symbolCombinations[item.key].minorValues.push(item.value);
+        }
+    });
+    
+    const message = JSON.stringify({
+        type: 'histogram-update',
+        symbols: symbolCombinations,
+        activeSymbols: Array.from(activeSymbolKeys) // Send list of active symbols
+    });
+    
+    histogramClients.forEach(client => {
+        if (client.readyState === WebSocket.OPEN) {
+            client.send(message);
+        }
+    });
+}
 
 let bottomInfo = {
     status: 'Starting...',
@@ -302,6 +398,11 @@ function updateDisplay(forceUpdate = false) {
         let lowestMinorValue = '';
         
         if (matchingMain && filteredItem.bp && matchingMain.ap) {
+            // Open histogram window when Major/Minor calculations begin (first time only)
+            if (!histogramWindowOpened) {
+                openHistogramWindow();
+            }
+            
             const major = filteredItem.bp - matchingMain.ap;
             majorValue = major.toFixed(4);
             
@@ -335,6 +436,11 @@ function updateDisplay(forceUpdate = false) {
             lowestMinorValue = lowestMinor.toFixed(4);
         }
         const minorColumn = minorValue.padEnd(9);
+        
+        // Send histogram update if calculations were performed
+        if ((majorValue || minorValue) && histogramWindowOpened) {
+            sendHistogramUpdate();
+        }
         
         // Column 7: Highest Major for this symbol combination
         const highMajorColumn = highestMajorValue.padEnd(9);
@@ -394,5 +500,8 @@ setInterval(() => {
 // Handle graceful exit
 process.on('SIGINT', () => {
     console.log('Application terminated');
+    if (histogramServer) {
+        histogramServer.close();
+    }
     process.exit(0);
 });

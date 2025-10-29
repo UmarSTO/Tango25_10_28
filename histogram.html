@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Major & Minor Values Histogram</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #1e1e1e;
+            color: white;
+            margin: 0;
+            padding: 20px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .charts-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+        }
+        .chart-wrapper {
+            background-color: #2d2d2d;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        .chart-title {
+            text-align: center;
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #ffffff;
+        }
+        .chart-canvas {
+            max-height: 300px;
+        }
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 10px;
+            font-size: 12px;
+        }
+        .stat-item {
+            text-align: center;
+        }
+        .stat-label {
+            color: #888;
+        }
+        .stat-value {
+            color: #fff;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Major & Minor Values Distribution</h1>
+        <p>Live histogram of all symbol combinations</p>
+    </div>
+    
+    <div id="charts-container" class="charts-container">
+        <!-- Charts will be dynamically generated here -->
+    </div>
+
+    <script>
+        let charts = {};
+        let symbolData = {};
+        
+        // WebSocket connection to receive data
+        const ws = new WebSocket('ws://localhost:8080');
+        
+        ws.onmessage = function(event) {
+            try {
+                const data = JSON.parse(event.data);
+                if (data.type === 'histogram-update') {
+                    updateHistograms(data.symbols, data.activeSymbols);
+                }
+            } catch (error) {
+                console.error('Error parsing WebSocket data:', error);
+            }
+        };
+        
+        ws.onerror = function(error) {
+            console.error('WebSocket error:', error);
+        };
+        
+        ws.onclose = function() {
+            console.log('WebSocket connection closed');
+        };
+        
+        function updateHistograms(symbols, activeSymbols) {
+            const container = document.getElementById('charts-container');
+            
+            // Remove charts that are no longer active
+            Object.keys(charts).forEach(symbolKey => {
+                if (!activeSymbols.includes(symbolKey)) {
+                    // Remove the chart
+                    charts[symbolKey].destroy();
+                    delete charts[symbolKey];
+                    
+                    // Remove the wrapper element using safe ID
+                    const safeId = symbolKey.replace(/[^a-zA-Z0-9]/g, '_');
+                    const wrapper = document.getElementById(`wrapper-${safeId}`);
+                    if (wrapper) {
+                        wrapper.remove();
+                    }
+                }
+            });
+            
+            // Update or create charts for active symbols
+            Object.keys(symbols).forEach(symbolKey => {
+                const data = symbols[symbolKey];
+                
+                if (!charts[symbolKey]) {
+                    createChart(symbolKey, data);
+                } else {
+                    updateChart(symbolKey, data);
+                }
+            });
+        }
+        
+        function createChart(symbolKey, data) {
+            const container = document.getElementById('charts-container');
+            
+            // Create safe ID by replacing special characters
+            const safeId = symbolKey.replace(/[^a-zA-Z0-9]/g, '_');
+            
+            // Create chart wrapper
+            const wrapper = document.createElement('div');
+            wrapper.className = 'chart-wrapper';
+            wrapper.id = `wrapper-${safeId}`;
+            
+            // Create title
+            const title = document.createElement('div');
+            title.className = 'chart-title';
+            title.textContent = symbolKey;
+            wrapper.appendChild(title);
+            
+            // Create canvas
+            const canvas = document.createElement('canvas');
+            canvas.id = `chart-${safeId}`;
+            canvas.className = 'chart-canvas';
+            wrapper.appendChild(canvas);
+            
+            // Create stats div
+            const stats = document.createElement('div');
+            stats.className = 'stats';
+            stats.innerHTML = `
+                <div class="stat-item">
+                    <div class="stat-label">Major Samples</div>
+                    <div class="stat-value" id="major-count-${safeId}">${data.majorValues.length}</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Minor Samples</div>
+                    <div class="stat-value" id="minor-count-${safeId}">${data.minorValues.length}</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Max Major</div>
+                    <div class="stat-value" id="max-major-${safeId}">${Math.max(...data.majorValues).toFixed(4)}</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Min Minor</div>
+                    <div class="stat-value" id="min-minor-${safeId}">${Math.min(...data.minorValues).toFixed(4)}</div>
+                </div>
+            `;
+            wrapper.appendChild(stats);
+            
+            container.appendChild(wrapper);
+            
+            // Create histogram data
+            const majorHist = createHistogramData(data.majorValues, 20);
+            const minorHist = createHistogramData(data.minorValues, 20);
+            
+            // Create chart
+            const ctx = canvas.getContext('2d');
+            charts[symbolKey] = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: majorHist.labels,
+                    datasets: [{
+                        label: 'Major Values',
+                        data: majorHist.data,
+                        backgroundColor: 'rgba(54, 162, 235, 0.7)',
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        borderWidth: 1
+                    }, {
+                        label: 'Minor Values',
+                        data: minorHist.data,
+                        backgroundColor: 'rgba(255, 99, 132, 0.7)',
+                        borderColor: 'rgba(255, 99, 132, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: 'white'
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: { color: 'white' },
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                        },
+                        y: {
+                            ticks: { color: 'white' },
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                        }
+                    }
+                }
+            });
+        }
+        
+        function updateChart(symbolKey, data) {
+            const chart = charts[symbolKey];
+            if (!chart) return;
+            
+            // Create safe ID by replacing special characters
+            const safeId = symbolKey.replace(/[^a-zA-Z0-9]/g, '_');
+            
+            // Update histogram data
+            const majorHist = createHistogramData(data.majorValues, 20);
+            const minorHist = createHistogramData(data.minorValues, 20);
+            
+            chart.data.labels = majorHist.labels;
+            chart.data.datasets[0].data = majorHist.data;
+            chart.data.datasets[1].data = minorHist.data;
+            chart.update('none'); // Update without animation for performance
+            
+            // Update stats
+            document.getElementById(`major-count-${safeId}`).textContent = data.majorValues.length;
+            document.getElementById(`minor-count-${safeId}`).textContent = data.minorValues.length;
+            document.getElementById(`max-major-${safeId}`).textContent = Math.max(...data.majorValues).toFixed(4);
+            document.getElementById(`min-minor-${safeId}`).textContent = Math.min(...data.minorValues).toFixed(4);
+        }
+        
+        function createHistogramData(values, bins) {
+            if (values.length === 0) return { labels: [], data: [] };
+            
+            const min = Math.min(...values);
+            const max = Math.max(...values);
+            const binWidth = (max - min) / bins;
+            
+            const labels = [];
+            const data = new Array(bins).fill(0);
+            
+            // Create bin labels
+            for (let i = 0; i < bins; i++) {
+                const binStart = min + i * binWidth;
+                const binEnd = min + (i + 1) * binWidth;
+                labels.push(`${binStart.toFixed(3)}-${binEnd.toFixed(3)}`);
+            }
+            
+            // Count values in each bin
+            values.forEach(value => {
+                let binIndex = Math.floor((value - min) / binWidth);
+                if (binIndex >= bins) binIndex = bins - 1; // Handle edge case
+                if (binIndex < 0) binIndex = 0;
+                data[binIndex]++;
+            });
+            
+            return { labels, data };
+        }
+    </script>
+</body>
+</html>
