@@ -6,18 +6,8 @@ const headers = {
     'Origin': 'https://csapis.com'
 };
 
-// Terminal setup
-const terminalHeight = process.stdout.rows || 30;
-const topHalfHeight = Math.floor(terminalHeight / 2) - 1;
-const separatorLine = topHalfHeight + 1;
-const bottomHalfStart = topHalfHeight + 2;
 
-// ANSI escape codes
-const clearScreen = '\x1b[2J';
-const moveCursor = (row, col) => `\x1b[${row};${col}H`;
-const clearLine = '\x1b[2K';
 
-let messages = [];
 let filteredSymbols = []; // Array to store objects with 's' and 'v' values from filtered messages
 let mainFilterResults = []; // Array to store results from MainFilter1
 let majorValues = []; // Array to store Major values with symbol combinations
@@ -31,54 +21,9 @@ let bottomInfo = {
     mainFilterCount: 0
 };
 
-// Initialize the split terminal
-function initTerminal() {
-    process.stdout.write(clearScreen);
-    
-    // Draw separator
-    process.stdout.write(moveCursor(separatorLine, 1));
-    process.stdout.write('─'.repeat(process.stdout.columns || 80));
-    
-    updateBottomPanel();
-}
-
-// Update top panel with messages
-function updateTopPanel(newMessage) {
-    messages.push(newMessage);
-    
-    // Keep only recent messages that fit in top half
-    // Estimate lines needed (rough calculation)
-    let totalLines = 0;
-    let recentMessages = [];
-    
-    for (let i = messages.length - 1; i >= 0; i--) {
-        const messageLines = Math.ceil(messages[i].length / (process.stdout.columns || 80));
-        if (totalLines + messageLines <= topHalfHeight) {
-            recentMessages.unshift(messages[i]);
-            totalLines += messageLines;
-        } else {
-            break;
-        }
-    }
-    
-    // Clear top area
-    for (let i = 1; i <= topHalfHeight; i++) {
-        process.stdout.write(moveCursor(i, 1));
-        process.stdout.write(clearLine);
-    }
-    
-    // Display recent messages
-    let currentLine = 1;
-    recentMessages.forEach(message => {
-        if (currentLine <= topHalfHeight) {
-            process.stdout.write(moveCursor(currentLine, 1));
-            process.stdout.write(message);
-            
-            // Calculate how many lines this message will take
-            const messageLines = Math.ceil(message.length / (process.stdout.columns || 80));
-            currentLine += messageLines;
-        }
-    });
+// Initialize the display
+function initDisplay() {
+    console.log('Market Data Feed - Starting...');
 }
 
 // Filter_1: Check if message has data.m = 'FUT'
@@ -151,9 +96,11 @@ function mainFilter1(messageObj) {
                     const bp = messageObj.data.bp ? parseFloat(messageObj.data.bp) : 0;
                     const av = messageObj.data.av ? parseFloat(messageObj.data.av) : 0;
                     const bv = messageObj.data.bv ? parseFloat(messageObj.data.bv) : 0;
+                    const lt = messageObj.data.lt || null; // Extract lt object
                     
                     if (existingIndex !== -1) {
-                        // Update existing entry
+                        // Update existing entry, retain previous lt if new one is null
+                        const existingLt = mainFilterResults[existingIndex].lt;
                         mainFilterResults[existingIndex] = {
                             s: messageSymbol,
                             v: volume,
@@ -161,8 +108,10 @@ function mainFilter1(messageObj) {
                             bp: bp,
                             av: av,
                             bv: bv,
+                            lt: lt || existingLt, // Keep previous lt if new one is null
                             timestamp: new Date().toLocaleTimeString()
                         };
+                        addRecentlyUpdated(messageSymbol); // Mark as recently updated
                     } else {
                         // Add new entry
                         mainFilterResults.push({
@@ -172,17 +121,19 @@ function mainFilter1(messageObj) {
                             bp: bp,
                             av: av,
                             bv: bv,
+                            lt: lt,
                             timestamp: new Date().toLocaleTimeString()
                         });
+                        addRecentlyUpdated(messageSymbol); // Mark as recently updated
                         bottomInfo.mainFilterCount++;
                     }
                     
                     // Sort by volume in descending order
                     mainFilterResults.sort((a, b) => b.v - a.v);
                     
-                    // Keep only top 10 results
-                    if (mainFilterResults.length > 10) {
-                        mainFilterResults = mainFilterResults.slice(0, 10);
+                    // Keep only top 20 results
+                    if (mainFilterResults.length > 20) {
+                        mainFilterResults = mainFilterResults.slice(0, 20);
                     }
                 }
                 
@@ -220,26 +171,31 @@ function processMessageFilters(rawMessage) {
                         const bp = messageObj.data.bp ? parseFloat(messageObj.data.bp) : 0;
                         const av = messageObj.data.av ? parseFloat(messageObj.data.av) : 0;
                         const bv = messageObj.data.bv ? parseFloat(messageObj.data.bv) : 0;
+                        const lt = messageObj.data.lt || null; // Extract lt object
                         
                         if (existingIndex !== -1) {
-                            // Update existing symbol with new values
+                            // Update existing symbol with new values, retain previous lt if new one is null
+                            const existingLt = filteredSymbols[existingIndex].lt;
                             filteredSymbols[existingIndex].v = volume;
                             filteredSymbols[existingIndex].ap = ap;
                             filteredSymbols[existingIndex].bp = bp;
                             filteredSymbols[existingIndex].av = av;
                             filteredSymbols[existingIndex].bv = bv;
+                            filteredSymbols[existingIndex].lt = lt || existingLt; // Keep previous lt if new one is null
+                            addRecentlyUpdated(symbol); // Mark as recently updated
                         } else {
                             // Add new symbol with all values
-                            filteredSymbols.push({ s: symbol, v: volume, ap: ap, bp: bp, av: av, bv: bv });
+                            filteredSymbols.push({ s: symbol, v: volume, ap: ap, bp: bp, av: av, bv: bv, lt: lt });
                             bottomInfo.filteredCount++;
+                            addRecentlyUpdated(symbol); // Mark as recently updated
                         }
                         
                         // Sort array by volume in descending order
                         filteredSymbols.sort((a, b) => b.v - a.v);
                         
-                        // Keep only top 10 symbols (limit array size)
-                        if (filteredSymbols.length > 10) {
-                            filteredSymbols = filteredSymbols.slice(0, 10);
+                        // Keep only top 20 symbols (limit array size)
+                        if (filteredSymbols.length > 20) {
+                            filteredSymbols = filteredSymbols.slice(0, 20);
                         }
                     }
                 }
@@ -263,138 +219,143 @@ function findMatchingMainFilter(filteredSymbol) {
     });
 }
 
-// Update bottom panel
-function updateBottomPanel() {
-    // Clear bottom area
-    for (let i = bottomHalfStart; i <= terminalHeight; i++) {
-        process.stdout.write(moveCursor(i, 1));
-        process.stdout.write(clearLine);
+let lastDisplayTime = 0;
+const DISPLAY_THROTTLE = 2000; // Only update display every 2 seconds
+let recentlyUpdated = new Set(); // Track recently updated symbols
+let updateTimeouts = new Map(); // Track timeouts for each symbol
+
+// Function to add symbol with 0.5 second timeout
+function addRecentlyUpdated(symbol) {
+    // Clear any existing timeout for this symbol
+    if (updateTimeouts.has(symbol)) {
+        clearTimeout(updateTimeouts.get(symbol));
     }
     
-    // Display bottom information
-    process.stdout.write(moveCursor(bottomHalfStart, 1));
-    process.stdout.write(`Status: ${bottomInfo.status}`);
+    // Add symbol to recently updated set
+    recentlyUpdated.add(symbol);
     
-    process.stdout.write(moveCursor(bottomHalfStart + 1, 1));
-    process.stdout.write(`Total: ${bottomInfo.messageCount} | Filtered: ${bottomInfo.filteredCount} | MainFilter: ${bottomInfo.mainFilterCount}`);
+    // Set timeout to remove after 0.5 seconds
+    const timeoutId = setTimeout(() => {
+        recentlyUpdated.delete(symbol);
+        updateTimeouts.delete(symbol);
+    }, 500);
     
-    // Display table header with colors
-    process.stdout.write(moveCursor(bottomHalfStart + 2, 1));
-    process.stdout.write(`\x1b[1m\x1b[36m${'Filtered Symbol'.padEnd(16)} ${'Volume'.padEnd(10)} ${'Main Symbol'.padEnd(16)} ${'Volume'.padEnd(10)} ${'Major'.padEnd(10)} ${'Minor'.padEnd(10)} ${'High Major'.padEnd(10)} ${'Low Minor'.padEnd(10)}\x1b[0m`);
+    updateTimeouts.set(symbol, timeoutId);
+}
+
+// Update display (throttled)
+function updateDisplay(forceUpdate = false) {
+    const currentTime = Date.now();
     
-    // Display table separator
-    process.stdout.write(moveCursor(bottomHalfStart + 3, 1));
-    process.stdout.write('\x1b[90m' + '─'.repeat(104) + '\x1b[0m');
+    // Only update display every 2 seconds or if forced
+    if (!forceUpdate && (currentTime - lastDisplayTime) < DISPLAY_THROTTLE) {
+        return;
+    }
     
-    // Display table rows (up to 10 rows)
-    let displayLine = bottomHalfStart + 4;
-    const maxRows = Math.min(10, Math.max(filteredSymbols.length, terminalHeight - displayLine - 1));
+    lastDisplayTime = currentTime;
+    console.clear();
     
-    for (let i = 0; i < maxRows; i++) {
-        process.stdout.write(moveCursor(displayLine, 1));
+    // Display status information
+    console.log(`Status: ${bottomInfo.status}`);
+    console.log(`Total: ${bottomInfo.messageCount} | Filtered: ${bottomInfo.filteredCount} | MainFilter: ${bottomInfo.mainFilterCount}`);
+    console.log('');
+    
+    // Set smaller font size and display table header
+    console.log('\x1b]50;SetProfile=;FontSize=11\x07'); // Reduce font size
+    console.log('Filtered Symbol'.padEnd(15) + ' │ ' + 'Price'.padEnd(9) + ' │ ' + 'Min Gap'.padEnd(8) + ' │ ' + 'Main Symbol'.padEnd(15) + ' │ ' + 'Volume'.padEnd(9) + ' │ ' + 'Major'.padEnd(9) + ' │ ' + 'Minor'.padEnd(9) + ' │ ' + 'High Major'.padEnd(9) + ' │ ' + 'Low Minor'.padEnd(9));
+    console.log('─'.repeat(15) + '─┼─' + '─'.repeat(9) + '─┼─' + '─'.repeat(8) + '─┼─' + '─'.repeat(15) + '─┼─' + '─'.repeat(9) + '─┼─' + '─'.repeat(9) + '─┼─' + '─'.repeat(9) + '─┼─' + '─'.repeat(9) + '─┼─' + '─'.repeat(9));
+    
+    // Display table rows
+    for (let i = 0; i < Math.min(20, filteredSymbols.length); i++) {
+        const filteredItem = filteredSymbols[i];
+        const matchingMain = findMatchingMainFilter(filteredItem);
         
-        if (i < filteredSymbols.length) {
-            const filteredItem = filteredSymbols[i];
-            const matchingMain = findMatchingMainFilter(filteredItem);
+        // Check if this row was recently updated
+        const isUpdated = recentlyUpdated.has(filteredItem.s) || (matchingMain && recentlyUpdated.has(matchingMain.s));
+        const bgColor = isUpdated ? '\x1b[100m' : ''; // Bright gray background for updates
+        const resetColor = '\x1b[0m';
+        
+        // Column 1: Filtered Symbol (with background color if updated)
+        const filteredSymbol = isUpdated ? 
+            `${bgColor}${filteredItem.s.padEnd(15)}${resetColor}` : 
+            filteredItem.s.padEnd(15);
+        
+        // Column 2: Price (lt.x value from main symbol)
+        const priceValue = matchingMain && matchingMain.lt && matchingMain.lt.x ? matchingMain.lt.x.toFixed(1) : '';
+        const priceColumn = priceValue.padEnd(9);
+        
+        // Column 3: Min Gap (Price × 0.112%)
+        const minGapValue = priceValue ? (parseFloat(priceValue) * 0.00112).toFixed(3) : '';
+        const minGapColumn = minGapValue.padEnd(8);
+        
+        // Column 4: Matching Main Symbol (or empty if no match)
+        const mainSymbol = matchingMain ? matchingMain.s.padEnd(15) : ''.padEnd(15);
+        
+        // Column 5: Main Volume (in millions, or empty if no match)
+        const mainVolumeM = matchingMain ? (matchingMain.v / 1000000).toFixed(1) + 'M' : '';
+        const mainVolume = mainVolumeM.padEnd(9);
+        
+        // Column 6: Major (filteredSymbol.bp - mainFilterResults.ap)
+        let majorValue = '';
+        let minorValue = '';
+        let highestMajorValue = '';
+        let lowestMinorValue = '';
+        
+        if (matchingMain && filteredItem.bp && matchingMain.ap) {
+            const major = filteredItem.bp - matchingMain.ap;
+            majorValue = major.toFixed(4);
             
-            // Column 1: Filtered Symbol
-            const filteredSymbol = filteredItem.s.padEnd(16);
+            // Create symbol combination key
+            const symbolKey = `${filteredItem.s}-${matchingMain.s}`;
             
-            // Column 2: Filtered Volume
-            const filteredVolume = filteredItem.v.toLocaleString().padEnd(10);
+            // Store Major value in tracking array
+            majorValues.push({ key: symbolKey, value: major });
             
-            // Column 3: Matching Main Symbol (or empty if no match)
-            const mainSymbol = matchingMain ? matchingMain.s.padEnd(16) : ''.padEnd(16);
-            
-            // Column 4: Main Volume (or empty if no match)
-            const mainVolume = matchingMain ? matchingMain.v.toLocaleString().padEnd(10) : ''.padEnd(10);
-            
-            // Column 5: Major (filteredSymbol.bp - mainFilterResults.ap)
-            let majorValue = '';
-            let minorValue = '';
-            let highestMajorValue = '';
-            let lowestMinorValue = '';
-            
-            if (matchingMain && filteredItem.bp && matchingMain.ap) {
-                const major = filteredItem.bp - matchingMain.ap;
-                majorValue = major.toFixed(4);
-                
-                // Create symbol combination key
-                const symbolKey = `${filteredItem.s}-${matchingMain.s}`;
-                
-                // Store Major value in tracking array
-                majorValues.push({ key: symbolKey, value: major });
-                
-                // Calculate highest Major for this symbol combination
-                const majorForSymbol = majorValues.filter(item => item.key === symbolKey).map(item => item.value);
-                const highestMajor = Math.max(...majorForSymbol);
-                highestMajorValue = highestMajor.toFixed(4);
-            }
-            const majorColumn = majorValue.padEnd(10);
-            
-            // Column 6: Minor (mainFilterResults.bp - filteredSymbol.ap) - absolute value
-            if (matchingMain && matchingMain.bp && filteredItem.ap) {
-                const minor = Math.abs(matchingMain.bp - filteredItem.ap);
-                minorValue = minor.toFixed(4);
-                
-                // Create symbol combination key
-                const symbolKey = `${filteredItem.s}-${matchingMain.s}`;
-                
-                // Store Minor value in tracking array
-                minorValues.push({ key: symbolKey, value: minor });
-                
-                // Calculate lowest Minor for this symbol combination
-                const minorForSymbol = minorValues.filter(item => item.key === symbolKey).map(item => item.value);
-                const lowestMinor = Math.min(...minorForSymbol);
-                lowestMinorValue = lowestMinor.toFixed(4);
-            }
-            const minorColumn = minorValue.padEnd(10);
-            
-            // Column 7: Highest Major for this symbol combination
-            const highMajorColumn = highestMajorValue.padEnd(10);
-            
-            // Column 8: Lowest Minor for this symbol combination
-            const lowMinorColumn = lowestMinorValue.padEnd(10);
-            
-            // Apply row coloring and highlight important values
-            let majorDisplay = majorColumn;
-            let minorDisplay = minorColumn;
-            let highMajorDisplay = highMajorColumn;
-            let lowMinorDisplay = lowMinorColumn;
-            
-            // Highlight high values in green, low values in red
-            if (majorValue) {
-                const majorNum = parseFloat(majorValue);
-                if (majorNum > 0) majorDisplay = `\x1b[32m${majorColumn}\x1b[0m`;
-                else if (majorNum < 0) majorDisplay = `\x1b[31m${majorColumn}\x1b[0m`;
-            }
-            
-            if (highestMajorValue) {
-                highMajorDisplay = `\x1b[1m\x1b[33m${highMajorColumn}\x1b[0m`; // Bold yellow for highest
-            }
-            
-            if (lowestMinorValue) {
-                lowMinorDisplay = `\x1b[1m\x1b[32m${lowMinorColumn}\x1b[0m`; // Bold green for lowest
-            }
-            
-            process.stdout.write(`${filteredSymbol} ${filteredVolume} ${mainSymbol} ${mainVolume} ${majorDisplay} ${minorDisplay} ${highMajorDisplay} ${lowMinorDisplay}`);
-        } else {
-            // Empty row
-            process.stdout.write(' '.repeat(104));
+            // Calculate highest Major for this symbol combination
+            const majorForSymbol = majorValues.filter(item => item.key === symbolKey).map(item => item.value);
+            const highestMajor = Math.max(...majorForSymbol);
+            highestMajorValue = highestMajor.toFixed(4);
         }
+        const majorColumn = majorValue.padEnd(9);
         
-        displayLine++;
+        // Column 7: Minor (mainFilterResults.bp - filteredSymbol.ap) - absolute value
+        if (matchingMain && matchingMain.bp && filteredItem.ap) {
+            const minor = Math.abs(matchingMain.bp - filteredItem.ap);
+            minorValue = minor.toFixed(4);
+            
+            // Create symbol combination key
+            const symbolKey = `${filteredItem.s}-${matchingMain.s}`;
+            
+            // Store Minor value in tracking array
+            minorValues.push({ key: symbolKey, value: minor });
+            
+            // Calculate lowest Minor for this symbol combination
+            const minorForSymbol = minorValues.filter(item => item.key === symbolKey).map(item => item.value);
+            const lowestMinor = Math.min(...minorForSymbol);
+            lowestMinorValue = lowestMinor.toFixed(4);
+        }
+        const minorColumn = minorValue.padEnd(9);
+        
+        // Column 7: Highest Major for this symbol combination
+        const highMajorColumn = highestMajorValue.padEnd(9);
+        
+        // Column 8: Lowest Minor for this symbol combination
+        const lowMinorColumn = lowestMinorValue.padEnd(9);
+        
+        console.log(`${filteredSymbol} │ ${priceColumn} │ ${minGapColumn} │ ${mainSymbol} │ ${mainVolume} │ ${majorColumn} │ ${minorColumn} │ ${highMajorColumn} │ ${lowMinorColumn}`);
     }
+    
+    // Note: recentlyUpdated symbols are now cleared automatically after 0.5 seconds via setTimeout
 }
 
 const ws = new WebSocket(wsUrl, { headers });
 
-// Initialize terminal layout
-initTerminal();
+// Initialize display
+initDisplay();
 
 ws.on('open', () => {
     bottomInfo.status = 'Connected to WebSocket feed';
-    updateBottomPanel();
+    updateDisplay(true); // Force initial display
 });
 
 ws.on('message', (data) => {
@@ -406,36 +367,32 @@ ws.on('message', (data) => {
     // Process message through filter layers
     processMessageFilters(message);
     
-    // Update top panel with new message
-    updateTopPanel(message);
-    
-    // Update bottom panel
-    updateBottomPanel();
+    // Update display (throttled)
+    updateDisplay();
 });
 
 ws.on('error', (error) => {
     bottomInfo.status = `Error: ${error.message}`;
-    updateBottomPanel();
+    updateDisplay(true); // Force display for errors
 });
 
 ws.on('close', () => {
     bottomInfo.status = 'WebSocket connection closed';
-    updateBottomPanel();
+    updateDisplay(true); // Force display for connection close
 });
 
 
 
-// Update time every second
+// Update time every second (but don't force display update)
 setInterval(() => {
     bottomInfo.time = new Date().toLocaleTimeString();
-    updateBottomPanel();
+    // Don't call updateDisplay() here to avoid flickering
 }, 1000);
 
 
 
 // Handle graceful exit
 process.on('SIGINT', () => {
-    process.stdout.write(moveCursor(1, 1));
     console.log('Application terminated');
     process.exit(0);
 });
