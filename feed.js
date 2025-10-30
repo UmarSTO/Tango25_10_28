@@ -1,6 +1,7 @@
 const WebSocket = require('ws');
 const path = require('path');
 const { exec } = require('child_process');
+const net = require('net');
 
 const wsUrl = 'wss://csapis.com/2.0/market/feed/full';
 const headers = {
@@ -20,6 +21,11 @@ let histogramWindowOpened = false;
 let histogramServer = null;
 let histogramClients = [];
 
+// Execution monitoring
+let activeExecutions = {}; // Track active symbol combinations and their stored Major values
+let pythonSocketHost = 'localhost';
+let pythonSocketPort = 9999;
+
 // Function to create histogram WebSocket server
 function createHistogramServer() {
     histogramServer = new WebSocket.Server({ port: 8080 });
@@ -30,6 +36,30 @@ function createHistogramServer() {
         
         // Send initial data if available
         sendHistogramUpdate();
+        
+        ws.on('message', (message) => {
+            try {
+                const data = JSON.parse(message);
+                if (data.type === 'execution-activated') {
+                    // Store the active execution with stored Major value and depth tracking
+                    activeExecutions[data.symbolKey] = {
+                        storedMajor: data.storedMajor,
+                        storedMinor: data.storedMinor,
+                        difference: data.difference,
+                        depth: data.depth || 1,
+                        remainingTriggers: data.remainingTriggers || data.depth || 1,
+                        timestamp: new Date().toISOString()
+                    };
+                    console.log(`🎯 Monitoring activated for ${data.symbolKey}, target Major: ${data.storedMajor}, depth: ${data.depth || 1}`);
+                } else if (data.type === 'execution-deactivated') {
+                    // Remove from active monitoring
+                    delete activeExecutions[data.symbolKey];
+                    console.log(`⏹️ Monitoring stopped for ${data.symbolKey}`);
+                }
+            } catch (error) {
+                console.error('Error parsing message from histogram client:', error);
+            }
+        });
         
         ws.on('close', () => {
             console.log('Histogram window disconnected');
@@ -64,12 +94,19 @@ function sendHistogramUpdate() {
     
     // Get currently active symbol combinations from top 20 filtered symbols
     const activeSymbolKeys = new Set();
+    const symbolMinGaps = {}; // Store Min Gap values for each symbol combination
+    
     for (let i = 0; i < Math.min(20, filteredSymbols.length); i++) {
         const filteredItem = filteredSymbols[i];
         const matchingMain = findMatchingMainFilter(filteredItem);
         if (matchingMain) {
             const symbolKey = `${filteredItem.s}-${matchingMain.s}`;
             activeSymbolKeys.add(symbolKey);
+            
+            // Calculate Min Gap for this symbol combination
+            const priceValue = matchingMain.lt && matchingMain.lt.x ? matchingMain.lt.x : 0;
+            const minGapValue = priceValue ? (parseFloat(priceValue) * 0.00112).toFixed(3) : '0.000';
+            symbolMinGaps[symbolKey] = minGapValue;
         }
     }
     
@@ -99,13 +136,86 @@ function sendHistogramUpdate() {
     const message = JSON.stringify({
         type: 'histogram-update',
         symbols: symbolCombinations,
-        activeSymbols: Array.from(activeSymbolKeys) // Send list of active symbols
+        activeSymbols: Array.from(activeSymbolKeys), // Send list of active symbols
+        minGaps: symbolMinGaps // Send Min Gap values for each symbol
     });
     
     histogramClients.forEach(client => {
         if (client.readyState === WebSocket.OPEN) {
             client.send(message);
         }
+    });
+}
+
+// Function to send execution reset cue to histogram clients
+function sendExecutionReset(symbolKey) {
+    if (histogramClients.length === 0) return;
+    
+    const message = JSON.stringify({
+        type: 'execution-reset',
+        symbolKey: symbolKey
+    });
+    
+    histogramClients.forEach(client => {
+        if (client.readyState === WebSocket.OPEN) {
+            client.send(message);
+        }
+    });
+    
+    console.log(`Sent execution reset for ${symbolKey}`);
+}
+
+// Function to send trigger count update to histogram clients
+function sendTriggerCountUpdate(symbolKey, remainingTriggers) {
+    if (histogramClients.length === 0) return;
+    
+    const message = JSON.stringify({
+        type: 'trigger-count-update',
+        symbolKey: symbolKey,
+        remainingTriggers: remainingTriggers
+    });
+    
+    histogramClients.forEach(client => {
+        if (client.readyState === WebSocket.OPEN) {
+            client.send(message);
+        }
+    });
+    
+    console.log(`Updated trigger count for ${symbolKey}: ${remainingTriggers} remaining`);
+}
+
+// Function to send TRIGGER_F4 to Python socket server
+function sendTriggerF4(symbolKey) {
+    return new Promise((resolve, reject) => {
+        const client = net.createConnection(pythonSocketPort, pythonSocketHost);
+        
+        client.on('connect', () => {
+            console.log(`Sending TRIGGER_F4 for ${symbolKey} to Python socket server...`);
+            client.write('TRIGGER_F4');
+        });
+        
+        client.on('data', (data) => {
+            const response = data.toString().trim();
+            console.log(`Python server response: ${response}`);
+            client.end();
+            
+            if (response === 'F4_TRIGGERED') {
+                console.log(`✅ F4 trigger successful for ${symbolKey}`);
+                // Note: Depth-based reset is now handled in the main trigger logic
+                resolve(true);
+            } else {
+                reject(new Error(`Unexpected response: ${response}`));
+            }
+        });
+        
+        client.on('error', (error) => {
+            console.error(`Error connecting to Python socket server: ${error.message}`);
+            reject(error);
+        });
+        
+        client.on('close', () => {
+            console.log('Connection to Python server closed');
+        });
     });
 }
 
@@ -416,6 +526,43 @@ function updateDisplay(forceUpdate = false) {
             const majorForSymbol = majorValues.filter(item => item.key === symbolKey).map(item => item.value);
             const highestMajor = Math.max(...majorForSymbol);
             highestMajorValue = highestMajor.toFixed(4);
+            
+            // Check if this symbol combination is being monitored for execution
+            if (activeExecutions[symbolKey]) {
+                const execution = activeExecutions[symbolKey];
+                const currentMajor = parseFloat(majorValue);
+                const targetMajor = parseFloat(execution.storedMajor);
+                
+                // Check if current Major is greater than or equal to target Major
+                const isTriggered = currentMajor >= targetMajor;
+                
+                if (isTriggered && execution.remainingTriggers > 0) {
+                    console.log(`🚀 MAJOR THRESHOLD REACHED for ${symbolKey}!`);
+                    console.log(`   Current: ${currentMajor.toFixed(4)} | Target: ${targetMajor.toFixed(4)} (>= trigger)`);
+                    console.log(`   Remaining triggers: ${execution.remainingTriggers}`);
+                    
+                    // Decrement remaining triggers
+                    activeExecutions[symbolKey].remainingTriggers--;
+                    const newRemainingCount = activeExecutions[symbolKey].remainingTriggers;
+                    
+                    // Send trigger to Python socket server
+                    sendTriggerF4(symbolKey).then(() => {
+                        // Send updated trigger count to histogram clients
+                        sendTriggerCountUpdate(symbolKey, newRemainingCount);
+                        
+                        // If no triggers remaining, deactivate monitoring
+                        if (newRemainingCount <= 0) {
+                            console.log(`🏁 All ${execution.depth} triggers used for ${symbolKey}. Deactivating monitoring.`);
+                            sendExecutionReset(symbolKey);
+                            delete activeExecutions[symbolKey];
+                        }
+                    }).catch(error => {
+                        console.error(`Failed to send F4 trigger: ${error.message}`);
+                        // Restore the trigger count on failure
+                        activeExecutions[symbolKey].remainingTriggers++;
+                    });
+                }
+            }
         }
         const majorColumn = majorValue.padEnd(9);
         

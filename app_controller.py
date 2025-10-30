@@ -37,6 +37,12 @@ class TriggerHandler(socketserver.BaseRequestHandler):
             data = self.request.recv(1024).decode('utf-8').strip()
             
             if data == "TRIGGER_F4":
+                # Re-focus the target application before triggering
+                if self.server.controller.target_app_info:
+                    print("Re-focusing target application before trigger...")
+                    self.server.controller.focus_application(self.server.controller.target_app_info)
+                    time.sleep(0.2)  # Brief pause to ensure focus is set
+                
                 # Set the global trigger flag
                 self.server.controller.trigger_received = True
                 
@@ -59,6 +65,7 @@ class WindowsAppController:
         self.trigger_received = False
         self.server = None
         self.server_thread = None
+        self.target_app_info = None  # Store the target application info
     
     def setup_safety(self):
         """Set up safety measures to prevent runaway automation."""
@@ -289,20 +296,14 @@ class WindowsAppController:
             self.server.server_close()
             print("Socket server stopped")
     
-    def wait_for_trigger(self, timeout: Optional[float] = None):
-        """Wait for trigger from Node script."""
+    def wait_for_trigger(self):
+        """Wait for trigger from Node script indefinitely."""
         self.trigger_received = False
-        start_time = time.time()
         
         print("Waiting for trigger... (Press Ctrl+C to cancel)")
         
         while not self.trigger_received:
             time.sleep(0.1)  # Check every 100ms
-            
-            # Check for timeout
-            if timeout and (time.time() - start_time) > timeout:
-                print(f"Timeout after {timeout} seconds")
-                return False
                 
         return True
 
@@ -350,6 +351,9 @@ def control_application(controller: WindowsAppController, app_info: Dict[str, st
     """Control application with socket-triggered keystrokes."""
     print(f"\n=== CONTROLLING: {app_info['display_name']} ===")
     
+    # Store the target application info for re-focusing when trigger arrives
+    controller.target_app_info = app_info
+    
     # Automatically focus the application
     controller.focus_application(app_info)
     print(f"Application '{app_info['display_name']}' is now focused")
@@ -360,20 +364,27 @@ def control_application(controller: WindowsAppController, app_info: Dict[str, st
         return
     
     try:
-        # Wait for trigger from Node script
+        # Wait for triggers from Node script continuously
         print("\nSocket server is running. Send 'TRIGGER_F4' message to localhost:9999")
         print("Example Node.js code:")
         print("const net = require('net');")
         print("const client = net.createConnection(9999, 'localhost');")
         print("client.write('TRIGGER_F4');")
+        print("\n🔄 Listening for triggers continuously... (Press Ctrl+C to stop)")
         
-        if controller.wait_for_trigger(timeout=300):  # 5 minute timeout
-            # Send F4 keystroke to the focused application
-            print("Sending F4 keystroke to focused application...")
-            controller.send_hotkey('f4')
-            print(f"F4 keystroke sent to {app_info['display_name']}")
-        else:
-            print("No trigger received within timeout period")
+        while True:
+            if controller.wait_for_trigger():  # Wait indefinitely for each trigger
+                # Send F4 keystroke to the focused application
+                print("Sending F4 keystroke to focused application...")
+                controller.send_hotkey('f4')
+                print(f"F4 keystroke sent to {app_info['display_name']}")
+                print("🔄 Ready for next trigger...")
+                
+                # Reset trigger flag for next trigger
+                controller.trigger_received = False
+            else:
+                print("Trigger monitoring stopped")
+                break
             
     except KeyboardInterrupt:
         print("\nOperation cancelled by user")

@@ -54,6 +54,71 @@
             color: #fff;
             font-weight: bold;
         }
+        .controls {
+            margin-top: 15px;
+            padding: 10px;
+            background-color: #1a1a1a;
+            border-radius: 5px;
+            border: 1px solid #444;
+        }
+        .input-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+            align-items: center;
+        }
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+        }
+        .input-label {
+            font-size: 12px;
+            color: #ccc;
+            margin-bottom: 3px;
+        }
+        .input-field {
+            padding: 5px 8px;
+            border: 1px solid #666;
+            border-radius: 3px;
+            background-color: #333;
+            color: white;
+            font-size: 12px;
+            width: 80px;
+        }
+        .submit-btn {
+            padding: 8px 15px;
+            background-color: #007acc;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+        .submit-btn:hover {
+            background-color: #005a9e;
+        }
+        .submit-btn:disabled {
+            background-color: #666 !important;
+            cursor: not-allowed !important;
+        }
+        .submit-btn:disabled:hover {
+            background-color: #666 !important;
+        }
+        .stored-values {
+            margin-top: 10px;
+            font-size: 12px;
+        }
+        .stored-label {
+            color: #888;
+            margin-right: 5px;
+        }
+        .stored-value {
+            color: #4CAF50;
+            font-weight: bold;
+            margin-right: 15px;
+        }
     </style>
 </head>
 <body>
@@ -69,6 +134,8 @@
     <script>
         let charts = {};
         let symbolData = {};
+        let storedValues = {}; // Store submitted values for each symbol combination
+        let executionStates = {}; // Track execution state for each symbol combination (0=Inactive, 1=Active)
         
         // WebSocket connection to receive data
         const ws = new WebSocket('ws://localhost:8080');
@@ -77,7 +144,17 @@
             try {
                 const data = JSON.parse(event.data);
                 if (data.type === 'histogram-update') {
-                    updateHistograms(data.symbols, data.activeSymbols);
+                    updateHistograms(data.symbols, data.activeSymbols, data.minGaps);
+                } else if (data.type === 'execution-reset') {
+                    // Reset execution state for specified symbol combination
+                    if (data.symbolKey) {
+                        resetExecutionState(data.symbolKey);
+                    }
+                } else if (data.type === 'trigger-count-update') {
+                    // Update remaining trigger count
+                    if (data.symbolKey && data.remainingTriggers !== undefined) {
+                        updateRemainingTriggers(data.symbolKey, data.remainingTriggers);
+                    }
                 }
             } catch (error) {
                 console.error('Error parsing WebSocket data:', error);
@@ -92,7 +169,7 @@
             console.log('WebSocket connection closed');
         };
         
-        function updateHistograms(symbols, activeSymbols) {
+        function updateHistograms(symbols, activeSymbols, minGaps) {
             const container = document.getElementById('charts-container');
             
             // Remove charts that are no longer active
@@ -101,6 +178,10 @@
                     // Remove the chart
                     charts[symbolKey].destroy();
                     delete charts[symbolKey];
+                    
+                    // Clean up stored values and execution state for removed symbol
+                    delete storedValues[symbolKey];
+                    delete executionStates[symbolKey];
                     
                     // Remove the wrapper element using safe ID
                     const safeId = symbolKey.replace(/[^a-zA-Z0-9]/g, '_');
@@ -116,14 +197,14 @@
                 const data = symbols[symbolKey];
                 
                 if (!charts[symbolKey]) {
-                    createChart(symbolKey, data);
+                    createChart(symbolKey, data, minGaps);
                 } else {
-                    updateChart(symbolKey, data);
+                    updateChart(symbolKey, data, minGaps);
                 }
             });
         }
         
-        function createChart(symbolKey, data) {
+        function createChart(symbolKey, data, minGaps) {
             const container = document.getElementById('charts-container');
             
             // Create safe ID by replacing special characters
@@ -159,6 +240,10 @@
                     <div class="stat-value" id="minor-count-${safeId}">${data.minorValues.length}</div>
                 </div>
                 <div class="stat-item">
+                    <div class="stat-label">Min Gap</div>
+                    <div class="stat-value" id="min-gap-${safeId}">-</div>
+                </div>
+                <div class="stat-item">
                     <div class="stat-label">Max Major</div>
                     <div class="stat-value" id="max-major-${safeId}">${Math.max(...data.majorValues).toFixed(4)}</div>
                 </div>
@@ -169,7 +254,110 @@
             `;
             wrapper.appendChild(stats);
             
+            // Create controls section
+            const controls = document.createElement('div');
+            controls.className = 'controls';
+            
+            // Input fields row
+            const inputRow = document.createElement('div');
+            inputRow.className = 'input-row';
+            
+            // Major input group
+            const majorGroup = document.createElement('div');
+            majorGroup.className = 'input-group';
+            majorGroup.innerHTML = `
+                <div class="input-label">Major Value</div>
+                <input type="number" step="0.0001" class="input-field" id="major-input-${safeId}" placeholder="0.0000" oninput="updateLiveDifference('${symbolKey}', '${safeId}')">
+            `;
+            
+            // Minor input group
+            const minorGroup = document.createElement('div');
+            minorGroup.className = 'input-group';
+            minorGroup.innerHTML = `
+                <div class="input-label">Minor Value</div>
+                <input type="number" step="0.0001" class="input-field" id="minor-input-${safeId}" placeholder="0.0000" oninput="updateLiveDifference('${symbolKey}', '${safeId}')">
+            `;
+            
+            // Depth input group
+            const depthGroup = document.createElement('div');
+            depthGroup.className = 'input-group';
+            depthGroup.innerHTML = `
+                <div class="input-label">Depth (Triggers)</div>
+                <input type="number" step="1" min="1" class="input-field" id="depth-input-${safeId}" placeholder="1" value="1">
+            `;
+            
+            // Submit button
+            const submitBtn = document.createElement('button');
+            submitBtn.className = 'submit-btn';
+            submitBtn.textContent = 'Submit';
+            submitBtn.onclick = () => submitValues(symbolKey, safeId);
+            
+            inputRow.appendChild(majorGroup);
+            inputRow.appendChild(minorGroup);
+            inputRow.appendChild(depthGroup);
+            inputRow.appendChild(submitBtn);
+            controls.appendChild(inputRow);
+            
+            // Live difference display
+            const liveDiffRow = document.createElement('div');
+            liveDiffRow.className = 'input-row';
+            liveDiffRow.style.marginTop = '5px';
+            liveDiffRow.innerHTML = `
+                <div style="flex: 1; text-align: center; font-size: 12px; color: #ffa500;">
+                    <span class="stored-label">Live Difference:</span>
+                    <span class="stored-value" id="live-difference-${safeId}" style="color: #ffa500;">-</span>
+                </div>
+            `;
+            controls.appendChild(liveDiffRow);
+            
+            // Stored values display
+            const storedDisplay = document.createElement('div');
+            storedDisplay.className = 'stored-values';
+            storedDisplay.id = `stored-display-${safeId}`;
+            storedDisplay.innerHTML = `
+                <span class="stored-label">Stored Major:</span><span class="stored-value" id="stored-major-${safeId}">-</span>
+                <span class="stored-label">Stored Minor:</span><span class="stored-value" id="stored-minor-${safeId}">-</span>
+                <span class="stored-label">Difference:</span><span class="stored-value" id="stored-difference-${safeId}">-</span>
+                <span class="stored-label">Depth:</span><span class="stored-value" id="stored-depth-${safeId}">-</span>
+                <span class="stored-label">Remaining:</span><span class="stored-value" id="remaining-triggers-${safeId}">-</span>
+                <span class="stored-label">State:</span><span class="stored-value" id="execution-state-${safeId}" style="color: #ff6b6b;">Inactive</span>
+            `;
+            controls.appendChild(storedDisplay);
+            
+            wrapper.appendChild(controls);
             container.appendChild(wrapper);
+            
+            // Set initial Min Gap value
+            if (minGaps && minGaps[symbolKey]) {
+                document.getElementById(`min-gap-${safeId}`).textContent = minGaps[symbolKey];
+            }
+            
+            // Restore previously stored values if they exist
+            if (storedValues[symbolKey]) {
+                document.getElementById(`stored-major-${safeId}`).textContent = storedValues[symbolKey].major.toFixed(4);
+                document.getElementById(`stored-minor-${safeId}`).textContent = storedValues[symbolKey].minor.toFixed(4);
+                document.getElementById(`stored-difference-${safeId}`).textContent = storedValues[symbolKey].difference.toFixed(4);
+                document.getElementById(`stored-depth-${safeId}`).textContent = storedValues[symbolKey].depth || '-';
+                document.getElementById(`remaining-triggers-${safeId}`).textContent = storedValues[symbolKey].remainingTriggers || '-';
+            }
+            
+            // Restore execution state if it exists
+            if (executionStates[symbolKey] !== undefined) {
+                const isActive = executionStates[symbolKey] === 1;
+                document.getElementById(`execution-state-${safeId}`).textContent = isActive ? 'Active' : 'Inactive';
+                document.getElementById(`execution-state-${safeId}`).style.color = isActive ? '#4CAF50' : '#ff6b6b';
+                
+                // Set button state accordingly
+                const submitBtn = document.querySelector(`#wrapper-${safeId} .submit-btn`);
+                if (submitBtn) {
+                    submitBtn.disabled = isActive;
+                    submitBtn.style.backgroundColor = isActive ? '#666' : '#007acc';
+                    submitBtn.style.cursor = isActive ? 'not-allowed' : 'pointer';
+                }
+            } else {
+                // Initialize execution state to Inactive (0) for new symbols
+                executionStates[symbolKey] = 0;
+            }
             
             // Create histogram data
             const majorHist = createHistogramData(data.majorValues, 20);
@@ -219,7 +407,7 @@
             });
         }
         
-        function updateChart(symbolKey, data) {
+        function updateChart(symbolKey, data, minGaps) {
             const chart = charts[symbolKey];
             if (!chart) return;
             
@@ -240,6 +428,11 @@
             document.getElementById(`minor-count-${safeId}`).textContent = data.minorValues.length;
             document.getElementById(`max-major-${safeId}`).textContent = Math.max(...data.majorValues).toFixed(4);
             document.getElementById(`min-minor-${safeId}`).textContent = Math.min(...data.minorValues).toFixed(4);
+            
+            // Update Min Gap
+            if (minGaps && minGaps[symbolKey]) {
+                document.getElementById(`min-gap-${safeId}`).textContent = minGaps[symbolKey];
+            }
         }
         
         function createHistogramData(values, bins) {
@@ -268,6 +461,152 @@
             });
             
             return { labels, data };
+        }
+        
+        function submitValues(symbolKey, safeId) {
+            const majorInput = document.getElementById(`major-input-${safeId}`);
+            const minorInput = document.getElementById(`minor-input-${safeId}`);
+            const depthInput = document.getElementById(`depth-input-${safeId}`);
+            
+            const majorValue = parseFloat(majorInput.value);
+            const minorValue = parseFloat(minorInput.value);
+            const depthValue = parseInt(depthInput.value);
+            
+            // Validate inputs
+            if (isNaN(majorValue) || isNaN(minorValue)) {
+                alert('Please enter valid numbers for both Major and Minor values.');
+                return;
+            }
+            
+            if (isNaN(depthValue) || depthValue < 1) {
+                alert('Please enter a valid depth (minimum 1).');
+                return;
+            }
+            
+            // Calculate difference (Major - Minor)
+            const difference = majorValue - minorValue;
+            
+            // Store values
+            if (!storedValues[symbolKey]) {
+                storedValues[symbolKey] = {};
+            }
+            storedValues[symbolKey].major = majorValue;
+            storedValues[symbolKey].minor = minorValue;
+            storedValues[symbolKey].difference = difference;
+            storedValues[symbolKey].depth = depthValue;
+            storedValues[symbolKey].remainingTriggers = depthValue;
+            
+            // Set execution state to Active (1)
+            executionStates[symbolKey] = 1;
+            
+            // Send execution activation to feed.js server
+            const activationMessage = JSON.stringify({
+                type: 'execution-activated',
+                symbolKey: symbolKey,
+                storedMajor: majorValue,
+                storedMinor: minorValue,
+                difference: difference,
+                depth: depthValue,
+                remainingTriggers: depthValue
+            });
+            
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(activationMessage);
+                console.log(`Sent activation signal for ${symbolKey}`);
+            }
+            
+            // Update display
+            document.getElementById(`stored-major-${safeId}`).textContent = majorValue.toFixed(4);
+            document.getElementById(`stored-minor-${safeId}`).textContent = minorValue.toFixed(4);
+            document.getElementById(`stored-difference-${safeId}`).textContent = difference.toFixed(4);
+            document.getElementById(`stored-depth-${safeId}`).textContent = depthValue;
+            document.getElementById(`remaining-triggers-${safeId}`).textContent = depthValue;
+            document.getElementById(`execution-state-${safeId}`).textContent = 'Active';
+            document.getElementById(`execution-state-${safeId}`).style.color = '#4CAF50';
+            
+            // Disable submit button
+            const submitBtn = document.querySelector(`#wrapper-${safeId} .submit-btn`);
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.style.backgroundColor = '#666';
+                submitBtn.style.cursor = 'not-allowed';
+            }
+            
+            // Clear input fields
+            majorInput.value = '';
+            minorInput.value = '';
+            depthInput.value = '1'; // Reset to default
+            
+            console.log(`Stored values for ${symbolKey}:`, storedValues[symbolKey]);
+            console.log(`Execution state for ${symbolKey}: Active`);
+        }
+        
+        function resetExecutionState(symbolKey) {
+            const safeId = symbolKey.replace(/[^a-zA-Z0-9]/g, '_');
+            
+            // Set execution state to Inactive (0)
+            executionStates[symbolKey] = 0;
+            
+            // Send execution deactivation to feed.js server
+            const deactivationMessage = JSON.stringify({
+                type: 'execution-deactivated',
+                symbolKey: symbolKey
+            });
+            
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(deactivationMessage);
+                console.log(`Sent deactivation signal for ${symbolKey}`);
+            }
+            
+            // Update display
+            document.getElementById(`execution-state-${safeId}`).textContent = 'Inactive';
+            document.getElementById(`execution-state-${safeId}`).style.color = '#ff6b6b';
+            
+            // Enable submit button
+            const submitBtn = document.querySelector(`#wrapper-${safeId} .submit-btn`);
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.style.backgroundColor = '#007acc';
+                submitBtn.style.cursor = 'pointer';
+            }
+            
+            console.log(`Execution state for ${symbolKey}: Inactive`);
+        }
+        
+        function updateRemainingTriggers(symbolKey, remainingCount) {
+            const safeId = symbolKey.replace(/[^a-zA-Z0-9]/g, '_');
+            const remainingElement = document.getElementById(`remaining-triggers-${safeId}`);
+            
+            if (remainingElement) {
+                remainingElement.textContent = remainingCount;
+                
+                // Update stored values
+                if (storedValues[symbolKey]) {
+                    storedValues[symbolKey].remainingTriggers = remainingCount;
+                }
+                
+                console.log(`Updated remaining triggers for ${symbolKey}: ${remainingCount}`);
+            }
+        }
+        
+        function updateLiveDifference(symbolKey, safeId) {
+            const majorInput = document.getElementById(`major-input-${safeId}`);
+            const minorInput = document.getElementById(`minor-input-${safeId}`);
+            const liveDiffDisplay = document.getElementById(`live-difference-${safeId}`);
+            
+            const majorValue = parseFloat(majorInput.value);
+            const minorValue = parseFloat(minorInput.value);
+            
+            if (!isNaN(majorValue) && !isNaN(minorValue)) {
+                const difference = majorValue - minorValue;
+                liveDiffDisplay.textContent = difference.toFixed(4);
+            } else if (!isNaN(majorValue) && isNaN(minorValue)) {
+                liveDiffDisplay.textContent = `${majorValue.toFixed(4)} - ?`;
+            } else if (isNaN(majorValue) && !isNaN(minorValue)) {
+                liveDiffDisplay.textContent = `? - ${minorValue.toFixed(4)}`;
+            } else {
+                liveDiffDisplay.textContent = '-';
+            }
         }
     </script>
 </body>
