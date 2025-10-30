@@ -105,7 +105,7 @@ function sendHistogramUpdate() {
             
             // Calculate Min Gap for this symbol combination
             const priceValue = matchingMain.lt && matchingMain.lt.x ? matchingMain.lt.x : 0;
-            const minGapValue = priceValue ? (parseFloat(priceValue) * 0.00112).toFixed(3) : '0.000';
+            const minGapValue = priceValue ? (parseFloat(priceValue) * 0.00223).toFixed(3) : '0.000';
             symbolMinGaps[symbolKey] = minGapValue;
         }
     }
@@ -185,13 +185,23 @@ function sendTriggerCountUpdate(symbolKey, remainingTriggers) {
 }
 
 // Function to send TRIGGER_F4 to Python socket server
-function sendTriggerF4(symbolKey) {
+function sendTriggerF4(symbolKey, scripSymbol) {
     return new Promise((resolve, reject) => {
         const client = net.createConnection(pythonSocketPort, pythonSocketHost);
         
         client.on('connect', () => {
             console.log(`Sending TRIGGER_F4 for ${symbolKey} to Python socket server...`);
-            client.write('TRIGGER_F4');
+            
+            // Create trigger package with additional information
+            const triggerPackage = JSON.stringify({
+                command: 'TRIGGER_F4',
+                symbolKey: symbolKey,
+                scrip: scripSymbol,
+                timestamp: new Date().toISOString()
+            });
+            
+            client.write(triggerPackage);
+            console.log(`📦 Sent trigger package: Scrip=${scripSymbol}, SymbolKey=${symbolKey}`);
         });
         
         client.on('data', (data) => {
@@ -200,7 +210,7 @@ function sendTriggerF4(symbolKey) {
             client.end();
             
             if (response === 'F4_TRIGGERED') {
-                console.log(`✅ F4 trigger successful for ${symbolKey}`);
+                console.log(`✅ F4 trigger successful for ${symbolKey} (Scrip: ${scripSymbol})`);
                 // Note: Depth-based reset is now handled in the main trigger logic
                 resolve(true);
             } else {
@@ -490,8 +500,8 @@ function updateDisplay(forceUpdate = false) {
         const priceValue = matchingMain && matchingMain.lt && matchingMain.lt.x ? matchingMain.lt.x.toFixed(1) : '';
         const priceColumn = priceValue.padEnd(9);
         
-        // Column 3: Min Gap (Price × 0.112%)
-        const minGapValue = priceValue ? (parseFloat(priceValue) * 0.00112).toFixed(3) : '';
+        // Column 3: Min Gap (Price × 0.223%)
+        const minGapValue = priceValue ? (parseFloat(priceValue) * 0.00223).toFixed(3) : '';
         const minGapColumn = minGapValue.padEnd(8);
         
         // Column 4: Matching Main Symbol (or empty if no match)
@@ -545,8 +555,11 @@ function updateDisplay(forceUpdate = false) {
                     activeExecutions[symbolKey].remainingTriggers--;
                     const newRemainingCount = activeExecutions[symbolKey].remainingTriggers;
                     
-                    // Send trigger to Python socket server
-                    sendTriggerF4(symbolKey).then(() => {
+                    // Get the scrip symbol (main symbol from mainFilterResults)
+                    const scripSymbol = matchingMain.s;
+                    
+                    // Send trigger to Python socket server with scrip information
+                    sendTriggerF4(symbolKey, scripSymbol).then(() => {
                         // Send updated trigger count to histogram clients
                         sendTriggerCountUpdate(symbolKey, newRemainingCount);
                         

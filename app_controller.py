@@ -36,21 +36,70 @@ class TriggerHandler(socketserver.BaseRequestHandler):
             # Receive data from client
             data = self.request.recv(1024).decode('utf-8').strip()
             
-            if data == "TRIGGER_F4":
-                # Re-focus the target application before triggering
-                if self.server.controller.target_app_info:
-                    print("Re-focusing target application before trigger...")
-                    self.server.controller.focus_application(self.server.controller.target_app_info)
-                    time.sleep(0.2)  # Brief pause to ensure focus is set
+            # Try to parse as JSON first (new format), fallback to simple string (old format)
+            try:
+                import json
+                trigger_data = json.loads(data)
                 
-                # Set the global trigger flag
-                self.server.controller.trigger_received = True
-                
-                # Send acknowledgment back to client
-                self.request.sendall(b"F4_TRIGGERED\n")
-                print("Trigger received from Node script - sending F4...")
-            else:
-                self.request.sendall(b"UNKNOWN_COMMAND\n")
+                if trigger_data.get('command') == 'TRIGGER_F4':
+                    # Extract trigger information
+                    symbol_key = trigger_data.get('symbolKey', 'Unknown')
+                    scrip = trigger_data.get('scrip', 'Unknown')
+                    timestamp = trigger_data.get('timestamp', 'Unknown')
+                    
+                    print(f"📦 Received trigger package:")
+                    print(f"   Symbol Key: {symbol_key}")
+                    print(f"   Scrip: {scrip}")
+                    print(f"   Timestamp: {timestamp}")
+                    
+                    # Store trigger information for use
+                    self.server.controller.last_trigger_info = {
+                        'symbolKey': symbol_key,
+                        'scrip': scrip,
+                        'timestamp': timestamp
+                    }
+                    
+                    # Re-focus the target application before triggering
+                    if self.server.controller.target_app_info:
+                        print("Re-focusing target application before trigger...")
+                        self.server.controller.focus_application(self.server.controller.target_app_info)
+                        time.sleep(0.2)  # Brief pause to ensure focus is set
+                    
+                    # Set the global trigger flag
+                    self.server.controller.trigger_received = True
+                    
+                    # Send acknowledgment back to client
+                    self.request.sendall(b"F4_TRIGGERED\n")
+                    print(f"✅ F4 trigger ready for scrip: {scrip}")
+                else:
+                    self.request.sendall(b"UNKNOWN_COMMAND\n")
+                    
+            except json.JSONDecodeError:
+                # Fallback to old simple string format for backward compatibility
+                if data == "TRIGGER_F4":
+                    print("📦 Received legacy trigger format")
+                    
+                    # Store basic trigger information
+                    self.server.controller.last_trigger_info = {
+                        'symbolKey': 'Legacy',
+                        'scrip': 'Unknown',
+                        'timestamp': time.strftime('%Y-%m-%d %H:%M:%S')
+                    }
+                    
+                    # Re-focus the target application before triggering
+                    if self.server.controller.target_app_info:
+                        print("Re-focusing target application before trigger...")
+                        self.server.controller.focus_application(self.server.controller.target_app_info)
+                        time.sleep(0.2)  # Brief pause to ensure focus is set
+                    
+                    # Set the global trigger flag
+                    self.server.controller.trigger_received = True
+                    
+                    # Send acknowledgment back to client
+                    self.request.sendall(b"F4_TRIGGERED\n")
+                    print("Trigger received from Node script - sending F4...")
+                else:
+                    self.request.sendall(b"UNKNOWN_COMMAND\n")
                 
         except Exception as e:
             print(f"Error handling socket request: {e}")
@@ -66,6 +115,7 @@ class WindowsAppController:
         self.server = None
         self.server_thread = None
         self.target_app_info = None  # Store the target application info
+        self.last_trigger_info = None  # Store information from the last trigger
     
     def setup_safety(self):
         """Set up safety measures to prevent runaway automation."""
@@ -306,6 +356,54 @@ class WindowsAppController:
             time.sleep(0.1)  # Check every 100ms
                 
         return True
+    
+    def execute_trigger_sequence(self, trigger_info):
+        """Execute the complete keystroke sequence for F4 trigger."""
+        scrip = trigger_info.get('scrip', 'Unknown') if trigger_info else 'Unknown'
+        
+        print(f"\n🔄 Executing keystroke sequence for scrip: {scrip}")
+        
+        try:
+            # Step 1: F4 (already being done)
+            print("Step 1: Sending F4...")
+            self.send_hotkey('f4', delay=0.3)
+            
+            # Step 2: Enter numeric value 500
+            print("Step 2: Entering value 500...")
+            self.type_text('500', interval=0.05)
+            time.sleep(0.2)
+            
+            # Step 3: Press SHIFT+TAB
+            print("Step 3: Pressing SHIFT+TAB...")
+            self.send_hotkey('shift', 'tab', delay=0.2)
+            
+            # Step 4: Press DOWN ARROW 2 times
+            print("Step 4: Pressing DOWN ARROW 2 times...")
+            self.press_key('down', presses=2, interval=0.2)
+            
+            # Step 5: Press TAB 2 times
+            print("Step 5: Pressing TAB 2 times...")
+            self.press_key('tab', presses=2, interval=0.2)
+            
+            # Step 6: Enter Scrip received in the JSON package
+            print(f"Step 6: Entering scrip: {scrip}...")
+            self.type_text(scrip, interval=0.05)
+            time.sleep(0.2)
+            
+            # Step 7: Press TAB 2 times
+            print("Step 7: Pressing TAB 2 times...")
+            self.press_key('tab', presses=2, interval=0.2)
+            
+            # Step 8: Enter numeric value 3423
+            print("Step 8: Entering value 3423...")
+            self.type_text('3423', interval=0.05)
+            time.sleep(0.2)
+            
+            print(f"✅ Keystroke sequence completed successfully for scrip: {scrip}")
+            
+        except Exception as e:
+            print(f"❌ Error executing keystroke sequence: {e}")
+            raise
 
 
 
@@ -374,10 +472,20 @@ def control_application(controller: WindowsAppController, app_info: Dict[str, st
         
         while True:
             if controller.wait_for_trigger():  # Wait indefinitely for each trigger
-                # Send F4 keystroke to the focused application
-                print("Sending F4 keystroke to focused application...")
-                controller.send_hotkey('f4')
-                print(f"F4 keystroke sent to {app_info['display_name']}")
+                # Display trigger information if available
+                if controller.last_trigger_info:
+                    trigger_info = controller.last_trigger_info
+                    print(f"\n🎯 Processing trigger for:")
+                    print(f"   Scrip: {trigger_info['scrip']}")
+                    print(f"   Symbol Key: {trigger_info['symbolKey']}")
+                    print(f"   Timestamp: {trigger_info['timestamp']}")
+                
+                # Execute complete keystroke sequence
+                controller.execute_trigger_sequence(controller.last_trigger_info)
+                
+                # Display completion message with scrip info
+                scrip_display = controller.last_trigger_info['scrip'] if controller.last_trigger_info else 'Unknown'
+                print(f"✅ Complete sequence executed for {app_info['display_name']} - scrip: {scrip_display}")
                 print("🔄 Ready for next trigger...")
                 
                 # Reset trigger flag for next trigger
