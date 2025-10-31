@@ -473,40 +473,52 @@ class WindowsAppController:
         self.type_text(str(fut_scrip_bp), interval=0.05)
         time.sleep(0.2)
         
-        # Step 9: F4
-        print("Step 9: Sending F4...")
+        # Step 9: Press Enter 3 times
+        print("Step 9: Pressing Enter 3 times...")
+        self.press_key('enter', presses=3, interval=0.2)
+        
+        # Step 10: F4
+        print("Step 10: Sending F4...")
         self.send_hotkey('f4', delay=0.3)
         
-        # Step 10: Enter numeric value 500
-        print("Step 10: Entering value 500...")
+        # Step 11: Press SHIFT+HOME
+        print("Step 11: Pressing SHIFT+HOME...")
+        self.send_hotkey('shift', 'home', delay=0.2)
+        
+        # Step 12: Enter numeric value 500
+        print("Step 12: Entering value 500...")
         self.type_text('500', interval=0.05)
         time.sleep(0.2)
         
-        # Step 11: Press SHIFT+TAB 2 times
-        print("Step 11: Pressing SHIFT+TAB 2 times...")
+        # Step 13: Press SHIFT+TAB 2 times
+        print("Step 13: Pressing SHIFT+TAB 2 times...")
         self.send_hotkey('shift', 'tab', delay=0.2)
         self.send_hotkey('shift', 'tab', delay=0.2)
         
-        # Step 12: Press R key
-        print("Step 12: Pressing R key...")
+        # Step 14: Press R key
+        print("Step 14: Pressing R key...")
         self.press_key('r', interval=0.2)
         
-        # Step 13: Press TAB
-        print("Step 13: Pressing TAB...")
+        # Step 15: Press TAB
+        print("Step 15: Pressing TAB...")
         self.press_key('tab', interval=0.2)
         
-        # Step 14: Press DOWN ARROW 2 times
-        print("Step 14: Pressing DOWN ARROW 2 times...")
+        # Step 16: Press DOWN ARROW 2 times
+        print("Step 16: Pressing DOWN ARROW 2 times...")
         self.press_key('down', presses=2, interval=0.2)
         
-        # Step 15: Press TAB 2 times
-        print("Step 15: Pressing TAB 2 times...")
+        # Step 17: Press TAB 2 times
+        print("Step 17: Pressing TAB 2 times...")
         self.press_key('tab', presses=2, interval=0.2)
         
-        # Step 16: Enter Scrip
-        print(f"Step 16: Entering scrip: {scrip}...")
+        # Step 18: Enter Scrip
+        print(f"Step 18: Entering scrip: {scrip}...")
         self.type_text(scrip, interval=0.05)
         time.sleep(0.2)
+        
+        # Step 19: Press Enter 3 times (final step)
+        print("Step 19: Pressing Enter 3 times (final step)...")
+        self.press_key('enter', presses=3, interval=0.2)
         
         print(f"✅ F4 keystroke sequence completed successfully for scrip: {scrip}")
     
@@ -553,40 +565,52 @@ class WindowsAppController:
         self.type_text(scrip, interval=0.05)
         time.sleep(0.2)
         
-        # Step 9: Press F4
-        print("Step 9: Sending F4...")
+        # Step 9: Press Enter 3 times
+        print("Step 9: Pressing Enter 3 times...")
+        self.press_key('enter', presses=3, interval=0.2)
+        
+        # Step 10: Press F4
+        print("Step 10: Sending F4...")
         self.send_hotkey('f4', delay=0.3)
         
-        # Step 10: Enter value 500
-        print("Step 10: Entering value 500...")
+        # Step 11: Press SHIFT+HOME
+        print("Step 11: Pressing SHIFT+HOME...")
+        self.send_hotkey('shift', 'home', delay=0.2)
+        
+        # Step 12: Enter value 500
+        print("Step 12: Entering value 500...")
         self.type_text('500', interval=0.05)
         time.sleep(0.2)
         
-        # Step 11: Press SHIFT+TAB 2 times
-        print("Step 11: Pressing SHIFT+TAB 2 times...")
+        # Step 13: Press SHIFT+TAB 2 times
+        print("Step 13: Pressing SHIFT+TAB 2 times...")
         self.send_hotkey('shift', 'tab', delay=0.2)
         self.send_hotkey('shift', 'tab', delay=0.2)
         
-        # Step 12: Press F key
-        print("Step 12: Pressing F key...")
+        # Step 14: Press F key
+        print("Step 14: Pressing F key...")
         self.press_key('f', interval=0.2)
         
-        # Step 13: Press TAB
-        print("Step 13: Pressing TAB...")
+        # Step 15: Press TAB
+        print("Step 15: Pressing TAB...")
         self.press_key('tab', interval=0.2)
         
-        # Step 14: Press DOWN ARROW 2 times
-        print("Step 14: Pressing DOWN ARROW 2 times...")
+        # Step 16: Press DOWN ARROW 2 times
+        print("Step 16: Pressing DOWN ARROW 2 times...")
         self.press_key('down', presses=2, interval=0.2)
         
-        # Step 15: Press TAB 2 times
-        print("Step 15: Pressing TAB 2 times...")
+        # Step 17: Press TAB 2 times
+        print("Step 17: Pressing TAB 2 times...")
         self.press_key('tab', presses=2, interval=0.2)
         
-        # Step 16: Enter futScrip value
-        print(f"Step 16: Entering futScrip: {fut_scrip}...")
+        # Step 18: Enter futScrip value
+        print(f"Step 18: Entering futScrip: {fut_scrip}...")
         self.type_text(str(fut_scrip), interval=0.05)
         time.sleep(0.2)
+        
+        # Step 19: Press Enter 3 times (final step)
+        print("Step 19: Pressing Enter 3 times (final step)...")
+        self.press_key('enter', presses=3, interval=0.2)
         
         print(f"✅ F5 keystroke sequence completed successfully for scrip: {scrip}")
 
