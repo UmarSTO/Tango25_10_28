@@ -78,18 +78,22 @@ class TriggerHandler(socketserver.BaseRequestHandler):
                     # Extract trigger information for F5
                     symbol_key = trigger_data.get('symbolKey', 'Unknown')
                     scrip = trigger_data.get('scrip', 'Unknown')
+                    fut_scrip = trigger_data.get('futScrip', 'Unknown')
                     timestamp = trigger_data.get('timestamp', 'Unknown')
                     
                     print(f"📦 Received F5 trigger package:")
                     print(f"   Symbol Key: {symbol_key}")
                     print(f"   Scrip: {scrip}")
+                    print(f"   futScrip: {fut_scrip}")
                     print(f"   Timestamp: {timestamp}")
+                    print(f"   Raw package: {trigger_data}")
                     
                     # Store trigger information for use
                     self.server.controller.last_trigger_info = {
                         'command': 'TRIGGER_F5',
                         'symbolKey': symbol_key,
                         'scrip': scrip,
+                        'futScrip': fut_scrip,
                         'timestamp': timestamp
                     }
                     
@@ -510,12 +514,80 @@ class WindowsAppController:
         """Execute the F5 keystroke sequence."""
         print("F5 Sequence:")
         
+        # Get trigger info for futScrip
+        trigger_info = self.last_trigger_info or {}
+        fut_scrip = trigger_info.get('futScrip', scrip)
+        
         # Step 1: F5
         print("Step 1: Sending F5...")
         self.send_hotkey('f5', delay=0.3)
         
-        # Add F5-specific sequence here - for now, we'll use a basic F5 press
-        # You can customize this sequence based on the specific F5 requirements
+        # Step 2: Enter value 500
+        print("Step 2: Entering value 500...")
+        self.type_text('500', interval=0.05)
+        time.sleep(0.2)
+        
+        # Step 3: Press SHIFT+TAB 2 times
+        print("Step 3: Pressing SHIFT+TAB 2 times...")
+        self.send_hotkey('shift', 'tab', delay=0.2)
+        self.send_hotkey('shift', 'tab', delay=0.2)
+        
+        # Step 4: Press R key
+        print("Step 4: Pressing R key...")
+        self.press_key('r', interval=0.2)
+        
+        # Step 5: Press TAB
+        print("Step 5: Pressing TAB...")
+        self.press_key('tab', interval=0.2)
+        
+        # Step 6: Press DOWN ARROW 2 times
+        print("Step 6: Pressing DOWN ARROW 2 times...")
+        self.press_key('down', presses=2, interval=0.2)
+        
+        # Step 7: Press TAB 2 times
+        print("Step 7: Pressing TAB 2 times...")
+        self.press_key('tab', presses=2, interval=0.2)
+        
+        # Step 8: Enter scrip value
+        print(f"Step 8: Entering scrip: {scrip}...")
+        self.type_text(scrip, interval=0.05)
+        time.sleep(0.2)
+        
+        # Step 9: Press F4
+        print("Step 9: Sending F4...")
+        self.send_hotkey('f4', delay=0.3)
+        
+        # Step 10: Enter value 500
+        print("Step 10: Entering value 500...")
+        self.type_text('500', interval=0.05)
+        time.sleep(0.2)
+        
+        # Step 11: Press SHIFT+TAB 2 times
+        print("Step 11: Pressing SHIFT+TAB 2 times...")
+        self.send_hotkey('shift', 'tab', delay=0.2)
+        self.send_hotkey('shift', 'tab', delay=0.2)
+        
+        # Step 12: Press F key
+        print("Step 12: Pressing F key...")
+        self.press_key('f', interval=0.2)
+        
+        # Step 13: Press TAB
+        print("Step 13: Pressing TAB...")
+        self.press_key('tab', interval=0.2)
+        
+        # Step 14: Press DOWN ARROW 2 times
+        print("Step 14: Pressing DOWN ARROW 2 times...")
+        self.press_key('down', presses=2, interval=0.2)
+        
+        # Step 15: Press TAB 2 times
+        print("Step 15: Pressing TAB 2 times...")
+        self.press_key('tab', presses=2, interval=0.2)
+        
+        # Step 16: Enter futScrip value
+        print(f"Step 16: Entering futScrip: {fut_scrip}...")
+        self.type_text(str(fut_scrip), interval=0.05)
+        time.sleep(0.2)
+        
         print(f"✅ F5 keystroke sequence completed successfully for scrip: {scrip}")
 
 

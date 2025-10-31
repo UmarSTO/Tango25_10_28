@@ -425,7 +425,7 @@ function sendTriggerF4(symbolKey, scripSymbol, futScrip, futScripBp) {
 }
 
 // Function to send TRIGGER_F5 to Python socket server
-function sendTriggerF5(symbolKey, scripSymbol) {
+function sendTriggerF5(symbolKey, scripSymbol, futScrip) {
     return new Promise((resolve, reject) => {
         const client = net.createConnection(pythonSocketPort, pythonSocketHost);
         
@@ -435,6 +435,7 @@ function sendTriggerF5(symbolKey, scripSymbol) {
                 command: 'TRIGGER_F5',
                 symbolKey: symbolKey,
                 scrip: scripSymbol,
+                futScrip: futScrip,
                 timestamp: new Date().toISOString()
             });
             
@@ -850,7 +851,7 @@ function updateDisplay(forceUpdate = false) {
                     const scripSymbol = matchingMain.s;
                     
                     // Send F5 trigger to Python socket server
-                    sendTriggerF5(symbolKey, scripSymbol).then(() => {
+                    sendTriggerF5(symbolKey, scripSymbol, filteredItem.s).then(() => {
                         // Decrement minor remaining triggers
                         activeExecutions[symbolKey].minorRemaining--;
                         const newMinorRemaining = activeExecutions[symbolKey].minorRemaining;
