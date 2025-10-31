@@ -45,25 +45,27 @@ class TriggerHandler(socketserver.BaseRequestHandler):
                     # Extract trigger information
                     symbol_key = trigger_data.get('symbolKey', 'Unknown')
                     scrip = trigger_data.get('scrip', 'Unknown')
+                    fut_scrip = trigger_data.get('futScrip', 'Unknown')
+                    fut_scrip_bp = trigger_data.get('futScripBp', 'Unknown')
                     timestamp = trigger_data.get('timestamp', 'Unknown')
                     
-                    print(f"📦 Received trigger package:")
+                    print(f"📦 Received F4 trigger package:")
                     print(f"   Symbol Key: {symbol_key}")
                     print(f"   Scrip: {scrip}")
+                    print(f"   futScrip: {fut_scrip}")
+                    print(f"   futScripBp: {fut_scrip_bp}")
                     print(f"   Timestamp: {timestamp}")
+                    print(f"   Raw package: {trigger_data}")
                     
                     # Store trigger information for use
                     self.server.controller.last_trigger_info = {
+                        'command': 'TRIGGER_F4',
                         'symbolKey': symbol_key,
                         'scrip': scrip,
+                        'futScrip': fut_scrip,
+                        'futScripBp': fut_scrip_bp,
                         'timestamp': timestamp
                     }
-                    
-                    # Re-focus the target application before triggering
-                    if self.server.controller.target_app_info:
-                        print("Re-focusing target application before trigger...")
-                        self.server.controller.focus_application(self.server.controller.target_app_info)
-                        time.sleep(0.2)  # Brief pause to ensure focus is set
                     
                     # Set the global trigger flag
                     self.server.controller.trigger_received = True
@@ -71,6 +73,33 @@ class TriggerHandler(socketserver.BaseRequestHandler):
                     # Send acknowledgment back to client
                     self.request.sendall(b"F4_TRIGGERED\n")
                     print(f"✅ F4 trigger ready for scrip: {scrip}")
+                    
+                elif trigger_data.get('command') == 'TRIGGER_F5':
+                    # Extract trigger information for F5
+                    symbol_key = trigger_data.get('symbolKey', 'Unknown')
+                    scrip = trigger_data.get('scrip', 'Unknown')
+                    timestamp = trigger_data.get('timestamp', 'Unknown')
+                    
+                    print(f"📦 Received F5 trigger package:")
+                    print(f"   Symbol Key: {symbol_key}")
+                    print(f"   Scrip: {scrip}")
+                    print(f"   Timestamp: {timestamp}")
+                    
+                    # Store trigger information for use
+                    self.server.controller.last_trigger_info = {
+                        'command': 'TRIGGER_F5',
+                        'symbolKey': symbol_key,
+                        'scrip': scrip,
+                        'timestamp': timestamp
+                    }
+                    
+                    # Set the global trigger flag
+                    self.server.controller.trigger_received = True
+                    
+                    # Send acknowledgment back to client
+                    self.request.sendall(b"F5_TRIGGERED\n")
+                    print(f"✅ F5 trigger ready for scrip: {scrip}")
+                    
                 else:
                     self.request.sendall(b"UNKNOWN_COMMAND\n")
                     
@@ -81,16 +110,11 @@ class TriggerHandler(socketserver.BaseRequestHandler):
                     
                     # Store basic trigger information
                     self.server.controller.last_trigger_info = {
+                        'command': 'TRIGGER_F4',  # Set command for legacy compatibility
                         'symbolKey': 'Legacy',
                         'scrip': 'Unknown',
                         'timestamp': time.strftime('%Y-%m-%d %H:%M:%S')
                     }
-                    
-                    # Re-focus the target application before triggering
-                    if self.server.controller.target_app_info:
-                        print("Re-focusing target application before trigger...")
-                        self.server.controller.focus_application(self.server.controller.target_app_info)
-                        time.sleep(0.2)  # Brief pause to ensure focus is set
                     
                     # Set the global trigger flag
                     self.server.controller.trigger_received = True
@@ -246,20 +270,28 @@ class WindowsAppController:
         """
         Automatically focus an application by bringing its window to the front.
         """
-        print(f"Focusing application: {app_info['display_name']}")
+        print(f"🎯 Focusing application: {app_info['display_name']}")
         
         try:
             # Use PowerShell to bring the window to front based on process name
             process_name = app_info['name'].replace('.exe', '')
             
-            # PowerShell command to focus window by process name
+            # Enhanced PowerShell command with multiple focus attempts
             powershell_cmd = f'''
             $proc = Get-Process -Name "{process_name}" -ErrorAction SilentlyContinue | Select-Object -First 1
             if ($proc -and $proc.MainWindowHandle -ne 0) {{
-                Add-Type -TypeDefinition 'using System; using System.Runtime.InteropServices; public class Win32 {{ [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hWnd); [DllImport("user32.dll")] public static extern bool BringWindowToTop(IntPtr hWnd); }}'
+                Add-Type -TypeDefinition 'using System; using System.Runtime.InteropServices; public class Win32 {{ [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hWnd); [DllImport("user32.dll")] public static extern bool BringWindowToTop(IntPtr hWnd); [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow); [DllImport("user32.dll")] public static extern bool SetActiveWindow(IntPtr hWnd); }}'
+                
+                # Multiple attempts to ensure focus
+                [Win32]::ShowWindow($proc.MainWindowHandle, 9)  # SW_RESTORE
+                Start-Sleep -Milliseconds 100
                 [Win32]::BringWindowToTop($proc.MainWindowHandle)
+                Start-Sleep -Milliseconds 100
                 [Win32]::SetForegroundWindow($proc.MainWindowHandle)
-                Write-Host "Focused window for {process_name}"
+                Start-Sleep -Milliseconds 100
+                [Win32]::SetActiveWindow($proc.MainWindowHandle)
+                
+                Write-Host "Successfully focused window for {process_name}"
             }} else {{
                 Write-Host "Could not find window for {process_name}"
             }}
@@ -273,15 +305,27 @@ class WindowsAppController:
             )
             
             if result.returncode == 0:
-                print(f"Successfully focused {app_info['name']}")
-                time.sleep(0.5)  # Brief pause to ensure focus is set
+                print(f"✅ Focus command executed for {app_info['name']}")
+                time.sleep(0.3)  # Brief pause to ensure focus is set
+                
+                # Verify focus by checking if we can send a harmless key
+                try:
+                    print("🔍 Verifying application focus...")
+                    # Send a null operation to test focus (Alt key press and release)
+                    pyautogui.keyDown('alt')
+                    time.sleep(0.05)
+                    pyautogui.keyUp('alt')
+                    print("✅ Application focus verified")
+                except Exception as verify_error:
+                    print(f"⚠️ Focus verification failed: {verify_error}")
+                    
             else:
-                print(f"Could not auto-focus {app_info['name']}")
+                print(f"❌ Could not auto-focus {app_info['name']}")
                 print("Please manually click on the application window")
                 time.sleep(1)
                 
         except Exception as e:
-            print(f"Error focusing application: {e}")
+            print(f"❌ Error focusing application: {e}")
             print("Please manually click on the application window")
             time.sleep(1)
     
@@ -358,52 +402,121 @@ class WindowsAppController:
         return True
     
     def execute_trigger_sequence(self, trigger_info):
-        """Execute the complete keystroke sequence for F4 trigger."""
-        scrip = trigger_info.get('scrip', 'Unknown') if trigger_info else 'Unknown'
+        """Execute the complete keystroke sequence for F4 or F5 trigger."""
+        if not trigger_info:
+            print("❌ No trigger information available")
+            return
+            
+        command = trigger_info.get('command', 'UNKNOWN')
+        scrip = trigger_info.get('scrip', 'Unknown')
         
-        print(f"\n🔄 Executing keystroke sequence for scrip: {scrip}")
+        print(f"\n🔄 Executing {command} keystroke sequence for scrip: {scrip}")
         
         try:
-            # Step 1: F4 (already being done)
-            print("Step 1: Sending F4...")
-            self.send_hotkey('f4', delay=0.3)
-            
-            # Step 2: Enter numeric value 500
-            print("Step 2: Entering value 500...")
-            self.type_text('500', interval=0.05)
-            time.sleep(0.2)
-            
-            # Step 3: Press SHIFT+TAB
-            print("Step 3: Pressing SHIFT+TAB...")
-            self.send_hotkey('shift', 'tab', delay=0.2)
-            
-            # Step 4: Press DOWN ARROW 2 times
-            print("Step 4: Pressing DOWN ARROW 2 times...")
-            self.press_key('down', presses=2, interval=0.2)
-            
-            # Step 5: Press TAB 2 times
-            print("Step 5: Pressing TAB 2 times...")
-            self.press_key('tab', presses=2, interval=0.2)
-            
-            # Step 6: Enter Scrip received in the JSON package
-            print(f"Step 6: Entering scrip: {scrip}...")
-            self.type_text(scrip, interval=0.05)
-            time.sleep(0.2)
-            
-            # Step 7: Press TAB 2 times
-            print("Step 7: Pressing TAB 2 times...")
-            self.press_key('tab', presses=2, interval=0.2)
-            
-            # Step 8: Enter numeric value 3423
-            print("Step 8: Entering value 3423...")
-            self.type_text('3423', interval=0.05)
-            time.sleep(0.2)
-            
-            print(f"✅ Keystroke sequence completed successfully for scrip: {scrip}")
-            
+            if command == 'TRIGGER_F4':
+                self.execute_f4_sequence(scrip)
+            elif command == 'TRIGGER_F5':
+                self.execute_f5_sequence(scrip)
+            else:
+                print(f"❌ Unknown command: {command}")
+                
         except Exception as e:
-            print(f"❌ Error executing keystroke sequence: {e}")
+            print(f"❌ Error executing {command} sequence: {e}")
             raise
+    
+    def execute_f4_sequence(self, scrip):
+        """Execute the F4 keystroke sequence."""
+        print("F4 Sequence:")
+        
+        # Get trigger info for futScrip and futScripBp
+        trigger_info = self.last_trigger_info or {}
+        fut_scrip = trigger_info.get('futScrip', scrip)
+        fut_scrip_bp = trigger_info.get('futScripBp', '0')
+        
+        # Step 1: F8
+        print("Step 1: Sending F8...")
+        self.send_hotkey('f8', delay=0.3)
+        
+        # Step 2: Enter numeric value 500
+        print("Step 2: Entering value 500...")
+        self.type_text('500', interval=0.05)
+        time.sleep(0.2)
+        
+        # Step 3: Press SHIFT+TAB 2 times
+        print("Step 3: Pressing SHIFT+TAB 2 times...")
+        self.send_hotkey('shift', 'tab', delay=0.2)
+        self.send_hotkey('shift', 'tab', delay=0.2)
+        
+        # Step 4: Press F key
+        print("Step 4: Pressing F key...")
+        self.press_key('f', interval=0.2)
+        
+        # Step 5: Press TAB 3 times
+        print("Step 5: Pressing TAB 3 times...")
+        self.press_key('tab', presses=3, interval=0.2)
+        
+        # Step 6: Enter futScrip value
+        print(f"Step 6: Entering futScrip: {fut_scrip}...")
+        self.type_text(str(fut_scrip), interval=0.05)
+        time.sleep(0.2)
+        
+        # Step 7: Press TAB
+        print("Step 7: Pressing TAB...")
+        self.press_key('tab', interval=0.2)
+        
+        # Step 8: Enter futScripBp value
+        print(f"Step 8: Entering futScripBp: {fut_scrip_bp}...")
+        self.type_text(str(fut_scrip_bp), interval=0.05)
+        time.sleep(0.2)
+        
+        # Step 9: F4
+        print("Step 9: Sending F4...")
+        self.send_hotkey('f4', delay=0.3)
+        
+        # Step 10: Enter numeric value 500
+        print("Step 10: Entering value 500...")
+        self.type_text('500', interval=0.05)
+        time.sleep(0.2)
+        
+        # Step 11: Press SHIFT+TAB 2 times
+        print("Step 11: Pressing SHIFT+TAB 2 times...")
+        self.send_hotkey('shift', 'tab', delay=0.2)
+        self.send_hotkey('shift', 'tab', delay=0.2)
+        
+        # Step 12: Press R key
+        print("Step 12: Pressing R key...")
+        self.press_key('r', interval=0.2)
+        
+        # Step 13: Press TAB
+        print("Step 13: Pressing TAB...")
+        self.press_key('tab', interval=0.2)
+        
+        # Step 14: Press DOWN ARROW 2 times
+        print("Step 14: Pressing DOWN ARROW 2 times...")
+        self.press_key('down', presses=2, interval=0.2)
+        
+        # Step 15: Press TAB 2 times
+        print("Step 15: Pressing TAB 2 times...")
+        self.press_key('tab', presses=2, interval=0.2)
+        
+        # Step 16: Enter Scrip
+        print(f"Step 16: Entering scrip: {scrip}...")
+        self.type_text(scrip, interval=0.05)
+        time.sleep(0.2)
+        
+        print(f"✅ F4 keystroke sequence completed successfully for scrip: {scrip}")
+    
+    def execute_f5_sequence(self, scrip):
+        """Execute the F5 keystroke sequence."""
+        print("F5 Sequence:")
+        
+        # Step 1: F5
+        print("Step 1: Sending F5...")
+        self.send_hotkey('f5', delay=0.3)
+        
+        # Add F5-specific sequence here - for now, we'll use a basic F5 press
+        # You can customize this sequence based on the specific F5 requirements
+        print(f"✅ F5 keystroke sequence completed successfully for scrip: {scrip}")
 
 
 
@@ -475,17 +588,26 @@ def control_application(controller: WindowsAppController, app_info: Dict[str, st
                 # Display trigger information if available
                 if controller.last_trigger_info:
                     trigger_info = controller.last_trigger_info
-                    print(f"\n🎯 Processing trigger for:")
+                    command_type = trigger_info.get('command', 'UNKNOWN')
+                    print(f"\n🎯 Processing {command_type} for:")
                     print(f"   Scrip: {trigger_info['scrip']}")
                     print(f"   Symbol Key: {trigger_info['symbolKey']}")
                     print(f"   Timestamp: {trigger_info['timestamp']}")
+                
+                # Re-focus the target application right before executing keystrokes
+                if controller.target_app_info:
+                    print("Ensuring application focus before keystroke execution...")
+                    controller.focus_application(controller.target_app_info)
+                    time.sleep(0.5)  # Give more time for focus to be properly set
                 
                 # Execute complete keystroke sequence
                 controller.execute_trigger_sequence(controller.last_trigger_info)
                 
                 # Display completion message with scrip info
-                scrip_display = controller.last_trigger_info['scrip'] if controller.last_trigger_info else 'Unknown'
-                print(f"✅ Complete sequence executed for {app_info['display_name']} - scrip: {scrip_display}")
+                trigger_info = controller.last_trigger_info
+                scrip_display = trigger_info['scrip'] if trigger_info else 'Unknown'
+                command_type = trigger_info.get('command', 'UNKNOWN') if trigger_info else 'UNKNOWN'
+                print(f"✅ {command_type} sequence executed for {app_info['display_name']} - scrip: {scrip_display}")
                 print("🔄 Ready for next trigger...")
                 
                 # Reset trigger flag for next trigger

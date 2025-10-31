@@ -106,6 +106,9 @@
         .submit-btn:disabled:hover {
             background-color: #666 !important;
         }
+        .submit-btn[style*="background-color: #dc3545"]:hover {
+            background-color: #c82333 !important;
+        }
         .stored-values {
             margin-top: 10px;
             font-size: 12px;
@@ -144,16 +147,31 @@
             try {
                 const data = JSON.parse(event.data);
                 if (data.type === 'histogram-update') {
-                    updateHistograms(data.symbols, data.activeSymbols, data.minGaps);
-                } else if (data.type === 'execution-reset') {
-                    // Reset execution state for specified symbol combination
+                    updateHistograms(data.symbols, data.activeSymbols, data.minGaps, data.prices);
+                } else if (data.type === 'major-reset') {
+                    // Reset major execution state for specified symbol combination
                     if (data.symbolKey) {
-                        resetExecutionState(data.symbolKey);
+                        resetMajorExecutionState(data.symbolKey);
                     }
-                } else if (data.type === 'trigger-count-update') {
-                    // Update remaining trigger count
+                } else if (data.type === 'minor-reset') {
+                    // Reset minor execution state for specified symbol combination
+                    if (data.symbolKey) {
+                        resetMinorExecutionState(data.symbolKey);
+                    }
+                } else if (data.type === 'major-trigger-update') {
+                    // Update remaining major trigger count
                     if (data.symbolKey && data.remainingTriggers !== undefined) {
-                        updateRemainingTriggers(data.symbolKey, data.remainingTriggers);
+                        updateMajorRemainingTriggers(data.symbolKey, data.remainingTriggers);
+                    }
+                } else if (data.type === 'minor-trigger-update') {
+                    // Update remaining minor trigger count
+                    if (data.symbolKey && data.remainingTriggers !== undefined) {
+                        updateMinorRemainingTriggers(data.symbolKey, data.remainingTriggers);
+                    }
+                } else if (data.type === 'state-update') {
+                    // Handle state updates for compatibility
+                    if (data.symbolKey && data.state) {
+                        updateExecutionState(data.symbolKey, data.state);
                     }
                 }
             } catch (error) {
@@ -169,7 +187,7 @@
             console.log('WebSocket connection closed');
         };
         
-        function updateHistograms(symbols, activeSymbols, minGaps) {
+        function updateHistograms(symbols, activeSymbols, minGaps, prices) {
             const container = document.getElementById('charts-container');
             
             // Remove charts that are no longer active
@@ -197,14 +215,14 @@
                 const data = symbols[symbolKey];
                 
                 if (!charts[symbolKey]) {
-                    createChart(symbolKey, data, minGaps);
+                    createChart(symbolKey, data, minGaps, prices);
                 } else {
-                    updateChart(symbolKey, data, minGaps);
+                    updateChart(symbolKey, data, minGaps, prices);
                 }
             });
         }
         
-        function createChart(symbolKey, data, minGaps) {
+        function createChart(symbolKey, data, minGaps, prices) {
             const container = document.getElementById('charts-container');
             
             // Create safe ID by replacing special characters
@@ -244,12 +262,8 @@
                     <div class="stat-value" id="min-gap-${safeId}">-</div>
                 </div>
                 <div class="stat-item">
-                    <div class="stat-label">Max Major</div>
-                    <div class="stat-value" id="max-major-${safeId}">${Math.max(...data.majorValues).toFixed(4)}</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-label">Min Minor</div>
-                    <div class="stat-value" id="min-minor-${safeId}">${Math.min(...data.minorValues).toFixed(4)}</div>
+                    <div class="stat-label">Price</div>
+                    <div class="stat-value" id="price-${safeId}">-</div>
                 </div>
             `;
             wrapper.appendChild(stats);
@@ -258,9 +272,12 @@
             const controls = document.createElement('div');
             controls.className = 'controls';
             
-            // Input fields row
-            const inputRow = document.createElement('div');
-            inputRow.className = 'input-row';
+            // Major Value Controls Row
+            const majorRow = document.createElement('div');
+            majorRow.className = 'input-row';
+            majorRow.style.borderBottom = '1px solid #555';
+            majorRow.style.paddingBottom = '10px';
+            majorRow.style.marginBottom = '10px';
             
             // Major input group
             const majorGroup = document.createElement('div');
@@ -270,6 +287,38 @@
                 <input type="number" step="0.0001" class="input-field" id="major-input-${safeId}" placeholder="0.0000" oninput="updateLiveDifference('${symbolKey}', '${safeId}')">
             `;
             
+            // Major depth input group
+            const majorDepthGroup = document.createElement('div');
+            majorDepthGroup.className = 'input-group';
+            majorDepthGroup.innerHTML = `
+                <div class="input-label">Major Depth</div>
+                <input type="number" step="1" min="1" class="input-field" id="major-depth-input-${safeId}" placeholder="1" value="1">
+            `;
+            
+            // Major submit button
+            const majorSubmitBtn = document.createElement('button');
+            majorSubmitBtn.className = 'submit-btn';
+            majorSubmitBtn.textContent = 'Submit Major';
+            majorSubmitBtn.onclick = () => submitMajorValue(symbolKey, safeId);
+            
+            // Major release button
+            const majorReleaseBtn = document.createElement('button');
+            majorReleaseBtn.className = 'submit-btn';
+            majorReleaseBtn.style.backgroundColor = '#dc3545';
+            majorReleaseBtn.style.marginLeft = '5px';
+            majorReleaseBtn.textContent = 'Release Major';
+            majorReleaseBtn.onclick = () => releaseMajorValue(symbolKey, safeId);
+            
+            majorRow.appendChild(majorGroup);
+            majorRow.appendChild(majorDepthGroup);
+            majorRow.appendChild(majorSubmitBtn);
+            majorRow.appendChild(majorReleaseBtn);
+            controls.appendChild(majorRow);
+            
+            // Minor Value Controls Row
+            const minorRow = document.createElement('div');
+            minorRow.className = 'input-row';
+            
             // Minor input group
             const minorGroup = document.createElement('div');
             minorGroup.className = 'input-group';
@@ -278,25 +327,33 @@
                 <input type="number" step="0.0001" class="input-field" id="minor-input-${safeId}" placeholder="0.0000" oninput="updateLiveDifference('${symbolKey}', '${safeId}')">
             `;
             
-            // Depth input group
-            const depthGroup = document.createElement('div');
-            depthGroup.className = 'input-group';
-            depthGroup.innerHTML = `
-                <div class="input-label">Depth (Triggers)</div>
-                <input type="number" step="1" min="1" class="input-field" id="depth-input-${safeId}" placeholder="1" value="1">
+            // Minor depth input group
+            const minorDepthGroup = document.createElement('div');
+            minorDepthGroup.className = 'input-group';
+            minorDepthGroup.innerHTML = `
+                <div class="input-label">Minor Depth</div>
+                <input type="number" step="1" min="1" class="input-field" id="minor-depth-input-${safeId}" placeholder="1" value="1">
             `;
             
-            // Submit button
-            const submitBtn = document.createElement('button');
-            submitBtn.className = 'submit-btn';
-            submitBtn.textContent = 'Submit';
-            submitBtn.onclick = () => submitValues(symbolKey, safeId);
+            // Minor submit button
+            const minorSubmitBtn = document.createElement('button');
+            minorSubmitBtn.className = 'submit-btn';
+            minorSubmitBtn.textContent = 'Submit Minor';
+            minorSubmitBtn.onclick = () => submitMinorValue(symbolKey, safeId);
             
-            inputRow.appendChild(majorGroup);
-            inputRow.appendChild(minorGroup);
-            inputRow.appendChild(depthGroup);
-            inputRow.appendChild(submitBtn);
-            controls.appendChild(inputRow);
+            // Minor release button
+            const minorReleaseBtn = document.createElement('button');
+            minorReleaseBtn.className = 'submit-btn';
+            minorReleaseBtn.style.backgroundColor = '#dc3545';
+            minorReleaseBtn.style.marginLeft = '5px';
+            minorReleaseBtn.textContent = 'Release Minor';
+            minorReleaseBtn.onclick = () => releaseMinorValue(symbolKey, safeId);
+            
+            minorRow.appendChild(minorGroup);
+            minorRow.appendChild(minorDepthGroup);
+            minorRow.appendChild(minorSubmitBtn);
+            minorRow.appendChild(minorReleaseBtn);
+            controls.appendChild(minorRow);
             
             // Live difference display
             const liveDiffRow = document.createElement('div');
@@ -315,48 +372,51 @@
             storedDisplay.className = 'stored-values';
             storedDisplay.id = `stored-display-${safeId}`;
             storedDisplay.innerHTML = `
-                <span class="stored-label">Stored Major:</span><span class="stored-value" id="stored-major-${safeId}">-</span>
-                <span class="stored-label">Stored Minor:</span><span class="stored-value" id="stored-minor-${safeId}">-</span>
-                <span class="stored-label">Difference:</span><span class="stored-value" id="stored-difference-${safeId}">-</span>
-                <span class="stored-label">Depth:</span><span class="stored-value" id="stored-depth-${safeId}">-</span>
-                <span class="stored-label">Remaining:</span><span class="stored-value" id="remaining-triggers-${safeId}">-</span>
-                <span class="stored-label">State:</span><span class="stored-value" id="execution-state-${safeId}" style="color: #ff6b6b;">Inactive</span>
+                <div style="margin-bottom: 5px;">
+                    <span class="stored-label">Major:</span><span class="stored-value" id="stored-major-${safeId}">-</span>
+                    <span class="stored-label">Depth:</span><span class="stored-value" id="major-depth-${safeId}">-</span>
+                    <span class="stored-label">Remaining:</span><span class="stored-value" id="major-remaining-${safeId}">-</span>
+                    <span class="stored-label">State:</span><span class="stored-value" id="major-state-${safeId}" style="color: #ff6b6b;">Inactive</span>
+                </div>
+                <div>
+                    <span class="stored-label">Minor:</span><span class="stored-value" id="stored-minor-${safeId}">-</span>
+                    <span class="stored-label">Depth:</span><span class="stored-value" id="minor-depth-${safeId}">-</span>
+                    <span class="stored-label">Remaining:</span><span class="stored-value" id="minor-remaining-${safeId}">-</span>
+                    <span class="stored-label">State:</span><span class="stored-value" id="minor-state-${safeId}" style="color: #ff6b6b;">Inactive</span>
+                </div>
             `;
             controls.appendChild(storedDisplay);
             
             wrapper.appendChild(controls);
             container.appendChild(wrapper);
             
-            // Set initial Min Gap value
+            // Set initial Min Gap and Price values
             if (minGaps && minGaps[symbolKey]) {
                 document.getElementById(`min-gap-${safeId}`).textContent = minGaps[symbolKey];
+            }
+            if (prices && prices[symbolKey]) {
+                document.getElementById(`price-${safeId}`).textContent = prices[symbolKey];
             }
             
             // Restore previously stored values if they exist
             if (storedValues[symbolKey]) {
-                document.getElementById(`stored-major-${safeId}`).textContent = storedValues[symbolKey].major.toFixed(4);
-                document.getElementById(`stored-minor-${safeId}`).textContent = storedValues[symbolKey].minor.toFixed(4);
-                document.getElementById(`stored-difference-${safeId}`).textContent = storedValues[symbolKey].difference.toFixed(4);
-                document.getElementById(`stored-depth-${safeId}`).textContent = storedValues[symbolKey].depth || '-';
-                document.getElementById(`remaining-triggers-${safeId}`).textContent = storedValues[symbolKey].remainingTriggers || '-';
-            }
-            
-            // Restore execution state if it exists
-            if (executionStates[symbolKey] !== undefined) {
-                const isActive = executionStates[symbolKey] === 1;
-                document.getElementById(`execution-state-${safeId}`).textContent = isActive ? 'Active' : 'Inactive';
-                document.getElementById(`execution-state-${safeId}`).style.color = isActive ? '#4CAF50' : '#ff6b6b';
-                
-                // Set button state accordingly
-                const submitBtn = document.querySelector(`#wrapper-${safeId} .submit-btn`);
-                if (submitBtn) {
-                    submitBtn.disabled = isActive;
-                    submitBtn.style.backgroundColor = isActive ? '#666' : '#007acc';
-                    submitBtn.style.cursor = isActive ? 'not-allowed' : 'pointer';
+                // Restore Major values
+                if (storedValues[symbolKey].major !== undefined) {
+                    document.getElementById(`stored-major-${safeId}`).textContent = storedValues[symbolKey].major.toFixed(4);
+                    document.getElementById(`major-depth-${safeId}`).textContent = storedValues[symbolKey].majorDepth || '-';
+                    document.getElementById(`major-remaining-${safeId}`).textContent = storedValues[symbolKey].majorRemaining || '-';
+                    document.getElementById(`major-state-${safeId}`).textContent = 'Active';
+                    document.getElementById(`major-state-${safeId}`).style.color = '#4CAF50';
                 }
-            } else {
-                // Initialize execution state to Inactive (0) for new symbols
-                executionStates[symbolKey] = 0;
+                
+                // Restore Minor values
+                if (storedValues[symbolKey].minor !== undefined) {
+                    document.getElementById(`stored-minor-${safeId}`).textContent = storedValues[symbolKey].minor.toFixed(4);
+                    document.getElementById(`minor-depth-${safeId}`).textContent = storedValues[symbolKey].minorDepth || '-';
+                    document.getElementById(`minor-remaining-${safeId}`).textContent = storedValues[symbolKey].minorRemaining || '-';
+                    document.getElementById(`minor-state-${safeId}`).textContent = 'Active';
+                    document.getElementById(`minor-state-${safeId}`).style.color = '#4CAF50';
+                }
             }
             
             // Create histogram data
@@ -407,7 +467,7 @@
             });
         }
         
-        function updateChart(symbolKey, data, minGaps) {
+        function updateChart(symbolKey, data, minGaps, prices) {
             const chart = charts[symbolKey];
             if (!chart) return;
             
@@ -426,12 +486,13 @@
             // Update stats
             document.getElementById(`major-count-${safeId}`).textContent = data.majorValues.length;
             document.getElementById(`minor-count-${safeId}`).textContent = data.minorValues.length;
-            document.getElementById(`max-major-${safeId}`).textContent = Math.max(...data.majorValues).toFixed(4);
-            document.getElementById(`min-minor-${safeId}`).textContent = Math.min(...data.minorValues).toFixed(4);
             
-            // Update Min Gap
+            // Update Min Gap and Price
             if (minGaps && minGaps[symbolKey]) {
                 document.getElementById(`min-gap-${safeId}`).textContent = minGaps[symbolKey];
+            }
+            if (prices && prices[symbolKey]) {
+                document.getElementById(`price-${safeId}`).textContent = prices[symbolKey];
             }
         }
         
@@ -463,130 +524,350 @@
             return { labels, data };
         }
         
-        function submitValues(symbolKey, safeId) {
+        function submitMajorValue(symbolKey, safeId) {
             const majorInput = document.getElementById(`major-input-${safeId}`);
-            const minorInput = document.getElementById(`minor-input-${safeId}`);
-            const depthInput = document.getElementById(`depth-input-${safeId}`);
+            const majorDepthInput = document.getElementById(`major-depth-input-${safeId}`);
             
             const majorValue = parseFloat(majorInput.value);
-            const minorValue = parseFloat(minorInput.value);
-            const depthValue = parseInt(depthInput.value);
+            const majorDepth = parseInt(majorDepthInput.value);
             
             // Validate inputs
-            if (isNaN(majorValue) || isNaN(minorValue)) {
-                alert('Please enter valid numbers for both Major and Minor values.');
+            if (isNaN(majorValue)) {
+                alert('Please enter a valid number for Major value.');
                 return;
             }
             
-            if (isNaN(depthValue) || depthValue < 1) {
-                alert('Please enter a valid depth (minimum 1).');
+            if (isNaN(majorDepth) || majorDepth < 1) {
+                alert('Please enter a valid depth (minimum 1) for Major value.');
                 return;
             }
-            
-            // Calculate difference (Major - Minor)
-            const difference = majorValue - minorValue;
             
             // Store values
             if (!storedValues[symbolKey]) {
                 storedValues[symbolKey] = {};
             }
             storedValues[symbolKey].major = majorValue;
-            storedValues[symbolKey].minor = minorValue;
-            storedValues[symbolKey].difference = difference;
-            storedValues[symbolKey].depth = depthValue;
-            storedValues[symbolKey].remainingTriggers = depthValue;
+            storedValues[symbolKey].majorDepth = majorDepth;
+            storedValues[symbolKey].majorRemaining = majorDepth;
             
-            // Set execution state to Active (1)
-            executionStates[symbolKey] = 1;
-            
-            // Send execution activation to feed.js server
+            // Send major activation to feed.js server
             const activationMessage = JSON.stringify({
-                type: 'execution-activated',
+                type: 'major-activated',
                 symbolKey: symbolKey,
                 storedMajor: majorValue,
-                storedMinor: minorValue,
-                difference: difference,
-                depth: depthValue,
-                remainingTriggers: depthValue
+                majorDepth: majorDepth,
+                majorRemaining: majorDepth
             });
             
             if (ws && ws.readyState === WebSocket.OPEN) {
                 ws.send(activationMessage);
-                console.log(`Sent activation signal for ${symbolKey}`);
+                console.log(`Sent Major activation signal for ${symbolKey}`);
             }
             
             // Update display
             document.getElementById(`stored-major-${safeId}`).textContent = majorValue.toFixed(4);
-            document.getElementById(`stored-minor-${safeId}`).textContent = minorValue.toFixed(4);
-            document.getElementById(`stored-difference-${safeId}`).textContent = difference.toFixed(4);
-            document.getElementById(`stored-depth-${safeId}`).textContent = depthValue;
-            document.getElementById(`remaining-triggers-${safeId}`).textContent = depthValue;
-            document.getElementById(`execution-state-${safeId}`).textContent = 'Active';
-            document.getElementById(`execution-state-${safeId}`).style.color = '#4CAF50';
+            document.getElementById(`major-depth-${safeId}`).textContent = majorDepth;
+            document.getElementById(`major-remaining-${safeId}`).textContent = majorDepth;
+            document.getElementById(`major-state-${safeId}`).textContent = 'Active';
+            document.getElementById(`major-state-${safeId}`).style.color = '#4CAF50';
             
-            // Disable submit button
-            const submitBtn = document.querySelector(`#wrapper-${safeId} .submit-btn`);
-            if (submitBtn) {
-                submitBtn.disabled = true;
-                submitBtn.style.backgroundColor = '#666';
-                submitBtn.style.cursor = 'not-allowed';
+            // Disable major submit button and store reference
+            const majorSubmitBtn = document.querySelector(`#wrapper-${safeId} button[onclick*="submitMajorValue"]`);
+            if (majorSubmitBtn) {
+                majorSubmitBtn.disabled = true;
+                majorSubmitBtn.style.backgroundColor = '#666';
+                majorSubmitBtn.style.cursor = 'not-allowed';
+                
+                // Store button reference for later re-enabling
+                if (!storedValues[symbolKey]) {
+                    storedValues[symbolKey] = {};
+                }
+                storedValues[symbolKey].majorSubmitBtn = majorSubmitBtn;
             }
             
             // Clear input fields
             majorInput.value = '';
-            minorInput.value = '';
-            depthInput.value = '1'; // Reset to default
+            majorDepthInput.value = '1'; // Reset to default
             
-            console.log(`Stored values for ${symbolKey}:`, storedValues[symbolKey]);
-            console.log(`Execution state for ${symbolKey}: Active`);
+            console.log(`Major value submitted for ${symbolKey}: ${majorValue}, Depth: ${majorDepth}`);
         }
         
-        function resetExecutionState(symbolKey) {
-            const safeId = symbolKey.replace(/[^a-zA-Z0-9]/g, '_');
+        function submitMinorValue(symbolKey, safeId) {
+            const minorInput = document.getElementById(`minor-input-${safeId}`);
+            const minorDepthInput = document.getElementById(`minor-depth-input-${safeId}`);
             
-            // Set execution state to Inactive (0)
-            executionStates[symbolKey] = 0;
+            const minorValue = parseFloat(minorInput.value);
+            const minorDepth = parseInt(minorDepthInput.value);
             
-            // Send execution deactivation to feed.js server
-            const deactivationMessage = JSON.stringify({
-                type: 'execution-deactivated',
+            // Validate inputs
+            if (isNaN(minorValue)) {
+                alert('Please enter a valid number for Minor value.');
+                return;
+            }
+            
+            if (isNaN(minorDepth) || minorDepth < 1) {
+                alert('Please enter a valid depth (minimum 1) for Minor value.');
+                return;
+            }
+            
+            // Store values
+            if (!storedValues[symbolKey]) {
+                storedValues[symbolKey] = {};
+            }
+            storedValues[symbolKey].minor = minorValue;
+            storedValues[symbolKey].minorDepth = minorDepth;
+            storedValues[symbolKey].minorRemaining = minorDepth;
+            
+            // Send minor activation to feed.js server
+            const activationMessage = JSON.stringify({
+                type: 'minor-activated',
+                symbolKey: symbolKey,
+                storedMinor: minorValue,
+                minorDepth: minorDepth,
+                minorRemaining: minorDepth
+            });
+            
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(activationMessage);
+                console.log(`Sent Minor activation signal for ${symbolKey}`);
+            }
+            
+            // Update display
+            document.getElementById(`stored-minor-${safeId}`).textContent = minorValue.toFixed(4);
+            document.getElementById(`minor-depth-${safeId}`).textContent = minorDepth;
+            document.getElementById(`minor-remaining-${safeId}`).textContent = minorDepth;
+            document.getElementById(`minor-state-${safeId}`).textContent = 'Active';
+            document.getElementById(`minor-state-${safeId}`).style.color = '#4CAF50';
+            
+            // Disable minor submit button and store reference
+            const minorSubmitBtn = document.querySelector(`#wrapper-${safeId} button[onclick*="submitMinorValue"]`);
+            if (minorSubmitBtn) {
+                minorSubmitBtn.disabled = true;
+                minorSubmitBtn.style.backgroundColor = '#666';
+                minorSubmitBtn.style.cursor = 'not-allowed';
+                
+                // Store button reference for later re-enabling
+                if (!storedValues[symbolKey]) {
+                    storedValues[symbolKey] = {};
+                }
+                storedValues[symbolKey].minorSubmitBtn = minorSubmitBtn;
+            }
+            
+            // Clear input fields
+            minorInput.value = '';
+            minorDepthInput.value = '1'; // Reset to default
+            
+            console.log(`Minor value submitted for ${symbolKey}: ${minorValue}, Depth: ${minorDepth}`);
+        }
+        
+        function releaseMajorValue(symbolKey, safeId) {
+            // Send major release to feed.js server
+            const releaseMessage = JSON.stringify({
+                type: 'major-released',
                 symbolKey: symbolKey
             });
             
             if (ws && ws.readyState === WebSocket.OPEN) {
-                ws.send(deactivationMessage);
-                console.log(`Sent deactivation signal for ${symbolKey}`);
+                ws.send(releaseMessage);
+                console.log(`Sent Major release signal for ${symbolKey}`);
+            }
+            
+            // Reset major values
+            if (storedValues[symbolKey]) {
+                delete storedValues[symbolKey].major;
+                delete storedValues[symbolKey].majorDepth;
+                delete storedValues[symbolKey].majorRemaining;
             }
             
             // Update display
-            document.getElementById(`execution-state-${safeId}`).textContent = 'Inactive';
-            document.getElementById(`execution-state-${safeId}`).style.color = '#ff6b6b';
+            document.getElementById(`stored-major-${safeId}`).textContent = '-';
+            document.getElementById(`major-depth-${safeId}`).textContent = '-';
+            document.getElementById(`major-remaining-${safeId}`).textContent = '-';
+            document.getElementById(`major-state-${safeId}`).textContent = 'Inactive';
+            document.getElementById(`major-state-${safeId}`).style.color = '#ff6b6b';
             
-            // Enable submit button
-            const submitBtn = document.querySelector(`#wrapper-${safeId} .submit-btn`);
-            if (submitBtn) {
-                submitBtn.disabled = false;
-                submitBtn.style.backgroundColor = '#007acc';
-                submitBtn.style.cursor = 'pointer';
+            // Enable major submit button using stored reference
+            let majorSubmitBtn = storedValues[symbolKey] && storedValues[symbolKey].majorSubmitBtn;
+            if (!majorSubmitBtn) {
+                majorSubmitBtn = document.querySelector(`#wrapper-${safeId} button[onclick*="submitMajorValue"]`);
+            }
+            if (majorSubmitBtn) {
+                majorSubmitBtn.disabled = false;
+                majorSubmitBtn.style.backgroundColor = '#007acc';
+                majorSubmitBtn.style.cursor = 'pointer';
             }
             
-            console.log(`Execution state for ${symbolKey}: Inactive`);
+            console.log(`Major value released for ${symbolKey}`);
         }
         
-        function updateRemainingTriggers(symbolKey, remainingCount) {
+        function releaseMinorValue(symbolKey, safeId) {
+            // Send minor release to feed.js server
+            const releaseMessage = JSON.stringify({
+                type: 'minor-released',
+                symbolKey: symbolKey
+            });
+            
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(releaseMessage);
+                console.log(`Sent Minor release signal for ${symbolKey}`);
+            }
+            
+            // Reset minor values
+            if (storedValues[symbolKey]) {
+                delete storedValues[symbolKey].minor;
+                delete storedValues[symbolKey].minorDepth;
+                delete storedValues[symbolKey].minorRemaining;
+            }
+            
+            // Update display
+            document.getElementById(`stored-minor-${safeId}`).textContent = '-';
+            document.getElementById(`minor-depth-${safeId}`).textContent = '-';
+            document.getElementById(`minor-remaining-${safeId}`).textContent = '-';
+            document.getElementById(`minor-state-${safeId}`).textContent = 'Inactive';
+            document.getElementById(`minor-state-${safeId}`).style.color = '#ff6b6b';
+            
+            // Enable minor submit button using stored reference
+            let minorSubmitBtn = storedValues[symbolKey] && storedValues[symbolKey].minorSubmitBtn;
+            if (!minorSubmitBtn) {
+                minorSubmitBtn = document.querySelector(`#wrapper-${safeId} button[onclick*="submitMinorValue"]`);
+            }
+            if (minorSubmitBtn) {
+                minorSubmitBtn.disabled = false;
+                minorSubmitBtn.style.backgroundColor = '#007acc';
+                minorSubmitBtn.style.cursor = 'pointer';
+            }
+            
+            console.log(`Minor value released for ${symbolKey}`);
+        }
+        
+        function resetMajorExecutionState(symbolKey) {
             const safeId = symbolKey.replace(/[^a-zA-Z0-9]/g, '_');
-            const remainingElement = document.getElementById(`remaining-triggers-${safeId}`);
+            
+            // Reset major values
+            if (storedValues[symbolKey]) {
+                delete storedValues[symbolKey].major;
+                delete storedValues[symbolKey].majorDepth;
+                delete storedValues[symbolKey].majorRemaining;
+            }
+            
+            // Update display
+            document.getElementById(`stored-major-${safeId}`).textContent = '-';
+            document.getElementById(`major-depth-${safeId}`).textContent = '-';
+            document.getElementById(`major-remaining-${safeId}`).textContent = '-';
+            document.getElementById(`major-state-${safeId}`).textContent = 'Inactive';
+            document.getElementById(`major-state-${safeId}`).style.color = '#ff6b6b';
+            
+            // Enable major submit button using stored reference
+            let majorSubmitBtn = storedValues[symbolKey] && storedValues[symbolKey].majorSubmitBtn;
+            if (!majorSubmitBtn) {
+                majorSubmitBtn = document.querySelector(`#wrapper-${safeId} button[onclick*="submitMajorValue"]`);
+            }
+            if (majorSubmitBtn) {
+                majorSubmitBtn.disabled = false;
+                majorSubmitBtn.style.backgroundColor = '#007acc';
+                majorSubmitBtn.style.cursor = 'pointer';
+            }
+            
+            console.log(`Major execution state reset for ${symbolKey}`);
+        }
+        
+        function resetMinorExecutionState(symbolKey) {
+            const safeId = symbolKey.replace(/[^a-zA-Z0-9]/g, '_');
+            
+            // Reset minor values
+            if (storedValues[symbolKey]) {
+                delete storedValues[symbolKey].minor;
+                delete storedValues[symbolKey].minorDepth;
+                delete storedValues[symbolKey].minorRemaining;
+            }
+            
+            // Update display
+            document.getElementById(`stored-minor-${safeId}`).textContent = '-';
+            document.getElementById(`minor-depth-${safeId}`).textContent = '-';
+            document.getElementById(`minor-remaining-${safeId}`).textContent = '-';
+            document.getElementById(`minor-state-${safeId}`).textContent = 'Inactive';
+            document.getElementById(`minor-state-${safeId}`).style.color = '#ff6b6b';
+            
+            // Enable minor submit button using stored reference
+            let minorSubmitBtn = storedValues[symbolKey] && storedValues[symbolKey].minorSubmitBtn;
+            if (!minorSubmitBtn) {
+                minorSubmitBtn = document.querySelector(`#wrapper-${safeId} button[onclick*="submitMinorValue"]`);
+            }
+            if (minorSubmitBtn) {
+                minorSubmitBtn.disabled = false;
+                minorSubmitBtn.style.backgroundColor = '#007acc';
+                minorSubmitBtn.style.cursor = 'pointer';
+            }
+            
+            console.log(`Minor execution state reset for ${symbolKey}`);
+        }
+        
+        function updateMajorRemainingTriggers(symbolKey, remainingCount) {
+            const safeId = symbolKey.replace(/[^a-zA-Z0-9]/g, '_');
+            const remainingElement = document.getElementById(`major-remaining-${safeId}`);
             
             if (remainingElement) {
                 remainingElement.textContent = remainingCount;
                 
                 // Update stored values
                 if (storedValues[symbolKey]) {
-                    storedValues[symbolKey].remainingTriggers = remainingCount;
+                    storedValues[symbolKey].majorRemaining = remainingCount;
+                    
+                    // Re-enable submit button when depth reaches 0
+                    if (remainingCount <= 0 && storedValues[symbolKey].majorSubmitBtn) {
+                        const majorSubmitBtn = storedValues[symbolKey].majorSubmitBtn;
+                        majorSubmitBtn.disabled = false;
+                        majorSubmitBtn.style.backgroundColor = '#007acc';
+                        majorSubmitBtn.style.cursor = 'pointer';
+                    }
                 }
                 
-                console.log(`Updated remaining triggers for ${symbolKey}: ${remainingCount}`);
+                console.log(`Updated remaining major triggers for ${symbolKey}: ${remainingCount}`);
             }
+        }
+        
+        function updateMinorRemainingTriggers(symbolKey, remainingCount) {
+            const safeId = symbolKey.replace(/[^a-zA-Z0-9]/g, '_');
+            const remainingElement = document.getElementById(`minor-remaining-${safeId}`);
+            
+            if (remainingElement) {
+                remainingElement.textContent = remainingCount;
+                
+                // Update stored values
+                if (storedValues[symbolKey]) {
+                    storedValues[symbolKey].minorRemaining = remainingCount;
+                    
+                    // Re-enable submit button when depth reaches 0
+                    if (remainingCount <= 0 && storedValues[symbolKey].minorSubmitBtn) {
+                        const minorSubmitBtn = storedValues[symbolKey].minorSubmitBtn;
+                        minorSubmitBtn.disabled = false;
+                        minorSubmitBtn.style.backgroundColor = '#007acc';
+                        minorSubmitBtn.style.cursor = 'pointer';
+                    }
+                }
+                
+                console.log(`Updated remaining minor triggers for ${symbolKey}: ${remainingCount}`);
+            }
+        }
+        
+        function updateExecutionState(symbolKey, state) {
+            const safeId = symbolKey.replace(/[^a-zA-Z0-9]/g, '_');
+            
+            // For backward compatibility, update both major and minor states
+            const majorStateElement = document.getElementById(`major-state-${safeId}`);
+            const minorStateElement = document.getElementById(`minor-state-${safeId}`);
+            
+            if (majorStateElement) {
+                majorStateElement.textContent = state;
+                majorStateElement.style.color = state === 'Active' || state === 'Trade' ? '#4CAF50' : '#ff6b6b';
+            }
+            
+            if (minorStateElement) {
+                minorStateElement.textContent = state;
+                minorStateElement.style.color = state === 'Active' || state === 'Trade' ? '#4CAF50' : '#ff6b6b';
+            }
+            
+            console.log(`Updated execution state for ${symbolKey}: ${state}`);
         }
         
         function updateLiveDifference(symbolKey, safeId) {

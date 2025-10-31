@@ -3,6 +3,48 @@ const path = require('path');
 const { exec } = require('child_process');
 const net = require('net');
 
+// Audio notification functions
+function playF4Beep() {
+    // Single beep for F4 trigger using Windows PowerShell
+    try {
+        const { exec } = require('child_process');
+        exec('powershell -c "[console]::beep(800,200)"', (error) => {
+            if (error) {
+                // Fallback to process.stdout.write
+                process.stdout.write('\x07');
+            }
+        });
+    } catch (error) {
+        // Final fallback
+        process.stdout.write('\x07');
+    }
+}
+
+function playF5Beep() {
+    // Double beep for F5 trigger using Windows PowerShell
+    try {
+        const { exec } = require('child_process');
+        exec('powershell -c "[console]::beep(1000,200)"', (error) => {
+            if (error) {
+                process.stdout.write('\x07');
+            }
+        });
+        setTimeout(() => {
+            exec('powershell -c "[console]::beep(1000,200)"', (error) => {
+                if (error) {
+                    process.stdout.write('\x07');
+                }
+            });
+        }, 250);
+    } catch (error) {
+        // Final fallback
+        process.stdout.write('\x07');
+        setTimeout(() => {
+            process.stdout.write('\x07');
+        }, 200);
+    }
+}
+
 const wsUrl = 'wss://csapis.com/2.0/market/feed/full';
 const headers = {
     'Authorization': 'Bearer aW50Z2VxIGY2ZjUxZjliMTgyMzJjMmUxZGFkZWQ1ZDRjMDFjNjZm',
@@ -40,17 +82,77 @@ function createHistogramServer() {
         ws.on('message', (message) => {
             try {
                 const data = JSON.parse(message);
-                if (data.type === 'execution-activated') {
-                    // Store the active execution with stored Major value and depth tracking
-                    activeExecutions[data.symbolKey] = {
-                        storedMajor: data.storedMajor,
-                        storedMinor: data.storedMinor,
-                        difference: data.difference,
-                        depth: data.depth || 1,
-                        remainingTriggers: data.remainingTriggers || data.depth || 1,
-                        timestamp: new Date().toISOString()
-                    };
-                    console.log(`🎯 Monitoring activated for ${data.symbolKey}, target Major: ${data.storedMajor}, depth: ${data.depth || 1}`);
+                if (data.type === 'major-activated') {
+                    // Initialize or update execution with Major value tracking
+                    if (!activeExecutions[data.symbolKey]) {
+                        activeExecutions[data.symbolKey] = { timestamp: new Date().toISOString() };
+                    }
+                    
+                    activeExecutions[data.symbolKey].storedMajor = data.storedMajor;
+                    activeExecutions[data.symbolKey].majorDepth = data.majorDepth;
+                    activeExecutions[data.symbolKey].majorRemaining = data.majorRemaining;
+                    activeExecutions[data.symbolKey].majorState = 'Active';
+                    
+                    console.log(`🎯 Major monitoring activated for ${data.symbolKey}, target: ${data.storedMajor}, depth: ${data.majorDepth}`);
+                    
+                } else if (data.type === 'minor-activated') {
+                    // Initialize or update execution with Minor value tracking
+                    if (!activeExecutions[data.symbolKey]) {
+                        activeExecutions[data.symbolKey] = { timestamp: new Date().toISOString() };
+                    }
+                    
+                    activeExecutions[data.symbolKey].storedMinor = data.storedMinor;
+                    activeExecutions[data.symbolKey].minorDepth = data.minorDepth;
+                    activeExecutions[data.symbolKey].minorRemaining = data.minorRemaining;
+                    activeExecutions[data.symbolKey].minorState = 'Active';
+                    
+                    console.log(`🎯 Minor monitoring activated for ${data.symbolKey}, target: ${data.storedMinor}, depth: ${data.minorDepth}`);
+                    
+                } else if (data.type === 'major-released') {
+                    // Remove Major value monitoring
+                    if (activeExecutions[data.symbolKey]) {
+                        delete activeExecutions[data.symbolKey].storedMajor;
+                        delete activeExecutions[data.symbolKey].majorDepth;
+                        delete activeExecutions[data.symbolKey].majorRemaining;
+                        delete activeExecutions[data.symbolKey].majorState;
+                        
+                        // If no minor monitoring either, remove completely
+                        if (!activeExecutions[data.symbolKey].storedMinor) {
+                            delete activeExecutions[data.symbolKey];
+                        }
+                    }
+                    console.log(`⏹️ Major monitoring released for ${data.symbolKey}`);
+                    
+                } else if (data.type === 'minor-released') {
+                    // Remove Minor value monitoring
+                    if (activeExecutions[data.symbolKey]) {
+                        delete activeExecutions[data.symbolKey].storedMinor;
+                        delete activeExecutions[data.symbolKey].minorDepth;
+                        delete activeExecutions[data.symbolKey].minorRemaining;
+                        delete activeExecutions[data.symbolKey].minorState;
+                        
+                        // If no major monitoring either, remove completely
+                        if (!activeExecutions[data.symbolKey].storedMajor) {
+                            delete activeExecutions[data.symbolKey];
+                        }
+                    }
+                    console.log(`⏹️ Minor monitoring released for ${data.symbolKey}`);
+                    
+                } else if (data.type === 'execution-activated') {
+                    // Legacy support - convert to separate major/minor activations
+                    if (!activeExecutions[data.symbolKey]) {
+                        activeExecutions[data.symbolKey] = { timestamp: new Date().toISOString() };
+                    }
+                    
+                    activeExecutions[data.symbolKey].storedMajor = data.storedMajor;
+                    activeExecutions[data.symbolKey].storedMinor = data.storedMinor;
+                    activeExecutions[data.symbolKey].majorDepth = data.depth || 1;
+                    activeExecutions[data.symbolKey].majorRemaining = data.remainingTriggers || data.depth || 1;
+                    activeExecutions[data.symbolKey].majorState = 'Active';
+                    
+                    console.log(`🎯 Legacy monitoring activated for ${data.symbolKey}, Major: ${data.storedMajor}, Minor: ${data.storedMinor}`);
+                    sendStateUpdate(data.symbolKey, 'Active');
+                    
                 } else if (data.type === 'execution-deactivated') {
                     // Remove from active monitoring
                     delete activeExecutions[data.symbolKey];
@@ -95,6 +197,7 @@ function sendHistogramUpdate() {
     // Get currently active symbol combinations from top 20 filtered symbols
     const activeSymbolKeys = new Set();
     const symbolMinGaps = {}; // Store Min Gap values for each symbol combination
+    const symbolPrices = {}; // Store Price values for each symbol combination
     
     for (let i = 0; i < Math.min(20, filteredSymbols.length); i++) {
         const filteredItem = filteredSymbols[i];
@@ -103,10 +206,13 @@ function sendHistogramUpdate() {
             const symbolKey = `${filteredItem.s}-${matchingMain.s}`;
             activeSymbolKeys.add(symbolKey);
             
-            // Calculate Min Gap for this symbol combination
+            // Calculate Min Gap and Price for this symbol combination
             const priceValue = matchingMain.lt && matchingMain.lt.x ? matchingMain.lt.x : 0;
             const minGapValue = priceValue ? (parseFloat(priceValue) * 0.00223).toFixed(3) : '0.000';
+            const priceDisplayValue = priceValue ? parseFloat(priceValue).toFixed(1) : '0.0';
+            
             symbolMinGaps[symbolKey] = minGapValue;
+            symbolPrices[symbolKey] = priceDisplayValue;
         }
     }
     
@@ -137,7 +243,8 @@ function sendHistogramUpdate() {
         type: 'histogram-update',
         symbols: symbolCombinations,
         activeSymbols: Array.from(activeSymbolKeys), // Send list of active symbols
-        minGaps: symbolMinGaps // Send Min Gap values for each symbol
+        minGaps: symbolMinGaps, // Send Min Gap values for each symbol
+        prices: symbolPrices // Send Price values for each symbol
     });
     
     histogramClients.forEach(client => {
@@ -184,34 +291,123 @@ function sendTriggerCountUpdate(symbolKey, remainingTriggers) {
     console.log(`Updated trigger count for ${symbolKey}: ${remainingTriggers} remaining`);
 }
 
+// Function to send state update to histogram clients
+function sendStateUpdate(symbolKey, state) {
+    if (histogramClients.length === 0) return;
+    
+    const message = JSON.stringify({
+        type: 'state-update',
+        symbolKey: symbolKey,
+        state: state
+    });
+    
+    histogramClients.forEach(client => {
+        if (client.readyState === WebSocket.OPEN) {
+            client.send(message);
+        }
+    });
+    
+    console.log(`Updated state for ${symbolKey}: ${state}`);
+}
+
+// Function to send major trigger count update to histogram clients
+function sendMajorTriggerCountUpdate(symbolKey, remainingTriggers) {
+    if (histogramClients.length === 0) return;
+    
+    const message = JSON.stringify({
+        type: 'major-trigger-update',
+        symbolKey: symbolKey,
+        remainingTriggers: remainingTriggers
+    });
+    
+    histogramClients.forEach(client => {
+        if (client.readyState === WebSocket.OPEN) {
+            client.send(message);
+        }
+    });
+    
+    console.log(`Updated major trigger count for ${symbolKey}: ${remainingTriggers} remaining`);
+}
+
+// Function to send minor trigger count update to histogram clients
+function sendMinorTriggerCountUpdate(symbolKey, remainingTriggers) {
+    if (histogramClients.length === 0) return;
+    
+    const message = JSON.stringify({
+        type: 'minor-trigger-update',
+        symbolKey: symbolKey,
+        remainingTriggers: remainingTriggers
+    });
+    
+    histogramClients.forEach(client => {
+        if (client.readyState === WebSocket.OPEN) {
+            client.send(message);
+        }
+    });
+    
+    console.log(`Updated minor trigger count for ${symbolKey}: ${remainingTriggers} remaining`);
+}
+
+// Function to send major execution reset cue to histogram clients
+function sendMajorExecutionReset(symbolKey) {
+    if (histogramClients.length === 0) return;
+    
+    const message = JSON.stringify({
+        type: 'major-reset',
+        symbolKey: symbolKey
+    });
+    
+    histogramClients.forEach(client => {
+        if (client.readyState === WebSocket.OPEN) {
+            client.send(message);
+        }
+    });
+    
+    console.log(`Sent major execution reset for ${symbolKey}`);
+}
+
+// Function to send minor execution reset cue to histogram clients
+function sendMinorExecutionReset(symbolKey) {
+    if (histogramClients.length === 0) return;
+    
+    const message = JSON.stringify({
+        type: 'minor-reset',
+        symbolKey: symbolKey
+    });
+    
+    histogramClients.forEach(client => {
+        if (client.readyState === WebSocket.OPEN) {
+            client.send(message);
+        }
+    });
+    
+    console.log(`Sent minor execution reset for ${symbolKey}`);
+}
+
 // Function to send TRIGGER_F4 to Python socket server
-function sendTriggerF4(symbolKey, scripSymbol) {
+function sendTriggerF4(symbolKey, scripSymbol, futScrip, futScripBp) {
     return new Promise((resolve, reject) => {
         const client = net.createConnection(pythonSocketPort, pythonSocketHost);
         
         client.on('connect', () => {
-            console.log(`Sending TRIGGER_F4 for ${symbolKey} to Python socket server...`);
-            
             // Create trigger package with additional information
             const triggerPackage = JSON.stringify({
                 command: 'TRIGGER_F4',
                 symbolKey: symbolKey,
                 scrip: scripSymbol,
+                futScrip: futScrip,
+                futScripBp: futScripBp,
                 timestamp: new Date().toISOString()
             });
             
             client.write(triggerPackage);
-            console.log(`📦 Sent trigger package: Scrip=${scripSymbol}, SymbolKey=${symbolKey}`);
         });
         
         client.on('data', (data) => {
             const response = data.toString().trim();
-            console.log(`Python server response: ${response}`);
             client.end();
             
             if (response === 'F4_TRIGGERED') {
-                console.log(`✅ F4 trigger successful for ${symbolKey} (Scrip: ${scripSymbol})`);
-                // Note: Depth-based reset is now handled in the main trigger logic
                 resolve(true);
             } else {
                 reject(new Error(`Unexpected response: ${response}`));
@@ -219,12 +415,49 @@ function sendTriggerF4(symbolKey, scripSymbol) {
         });
         
         client.on('error', (error) => {
-            console.error(`Error connecting to Python socket server: ${error.message}`);
             reject(error);
         });
         
         client.on('close', () => {
-            console.log('Connection to Python server closed');
+            // Connection closed
+        });
+    });
+}
+
+// Function to send TRIGGER_F5 to Python socket server
+function sendTriggerF5(symbolKey, scripSymbol) {
+    return new Promise((resolve, reject) => {
+        const client = net.createConnection(pythonSocketPort, pythonSocketHost);
+        
+        client.on('connect', () => {
+            // Create trigger package with additional information
+            const triggerPackage = JSON.stringify({
+                command: 'TRIGGER_F5',
+                symbolKey: symbolKey,
+                scrip: scripSymbol,
+                timestamp: new Date().toISOString()
+            });
+            
+            client.write(triggerPackage);
+        });
+        
+        client.on('data', (data) => {
+            const response = data.toString().trim();
+            client.end();
+            
+            if (response === 'F5_TRIGGERED') {
+                resolve(true);
+            } else {
+                reject(new Error(`Unexpected response: ${response}`));
+            }
+        });
+        
+        client.on('error', (error) => {
+            reject(error);
+        });
+        
+        client.on('close', () => {
+            // Connection closed
         });
     });
 }
@@ -541,39 +774,46 @@ function updateDisplay(forceUpdate = false) {
             if (activeExecutions[symbolKey]) {
                 const execution = activeExecutions[symbolKey];
                 const currentMajor = parseFloat(majorValue);
-                const targetMajor = parseFloat(execution.storedMajor);
                 
-                // Check if current Major is greater than or equal to target Major
-                const isTriggered = currentMajor >= targetMajor;
-                
-                if (isTriggered && execution.remainingTriggers > 0) {
-                    console.log(`🚀 MAJOR THRESHOLD REACHED for ${symbolKey}!`);
-                    console.log(`   Current: ${currentMajor.toFixed(4)} | Target: ${targetMajor.toFixed(4)} (>= trigger)`);
-                    console.log(`   Remaining triggers: ${execution.remainingTriggers}`);
+                // Check Major value monitoring (F4 triggers)
+                if (execution.storedMajor !== undefined && execution.majorState === 'Active') {
+                    const targetMajor = parseFloat(execution.storedMajor);
+                    const isTriggered = currentMajor >= targetMajor;
                     
-                    // Decrement remaining triggers
-                    activeExecutions[symbolKey].remainingTriggers--;
-                    const newRemainingCount = activeExecutions[symbolKey].remainingTriggers;
-                    
-                    // Get the scrip symbol (main symbol from mainFilterResults)
-                    const scripSymbol = matchingMain.s;
-                    
-                    // Send trigger to Python socket server with scrip information
-                    sendTriggerF4(symbolKey, scripSymbol).then(() => {
-                        // Send updated trigger count to histogram clients
-                        sendTriggerCountUpdate(symbolKey, newRemainingCount);
+                    if (isTriggered && execution.majorRemaining > 0) {
+                        // Play single beep for F4 trigger
+                        playF4Beep();
                         
-                        // If no triggers remaining, deactivate monitoring
-                        if (newRemainingCount <= 0) {
-                            console.log(`🏁 All ${execution.depth} triggers used for ${symbolKey}. Deactivating monitoring.`);
-                            sendExecutionReset(symbolKey);
-                            delete activeExecutions[symbolKey];
-                        }
-                    }).catch(error => {
-                        console.error(`Failed to send F4 trigger: ${error.message}`);
-                        // Restore the trigger count on failure
-                        activeExecutions[symbolKey].remainingTriggers++;
-                    });
+                        // Get the scrip symbol (main symbol from mainFilterResults)
+                        const scripSymbol = matchingMain.s;
+                        
+                        // Send F4 trigger to Python socket server
+                        sendTriggerF4(symbolKey, scripSymbol, filteredItem.s, filteredItem.bp).then(() => {
+                            // Decrement major remaining triggers
+                            activeExecutions[symbolKey].majorRemaining--;
+                            const newMajorRemaining = activeExecutions[symbolKey].majorRemaining;
+                            
+                            // Send updated major trigger count to histogram clients
+                            sendMajorTriggerCountUpdate(symbolKey, newMajorRemaining);
+                            
+                            // If no major triggers remaining, reset major monitoring
+                            if (newMajorRemaining <= 0) {
+                                console.log(`🏁 All major triggers used for ${symbolKey}. Resetting major monitoring.`);
+                                sendMajorExecutionReset(symbolKey);
+                                delete activeExecutions[symbolKey].storedMajor;
+                                delete activeExecutions[symbolKey].majorDepth;
+                                delete activeExecutions[symbolKey].majorRemaining;
+                                delete activeExecutions[symbolKey].majorState;
+                                
+                                // If no minor monitoring either, remove completely
+                                if (!activeExecutions[symbolKey].storedMinor) {
+                                    delete activeExecutions[symbolKey];
+                                }
+                            }
+                        }).catch(error => {
+                            // Silently handle F4 trigger errors
+                        });
+                    }
                 }
             }
         }
@@ -594,6 +834,49 @@ function updateDisplay(forceUpdate = false) {
             const minorForSymbol = minorValues.filter(item => item.key === symbolKey).map(item => item.value);
             const lowestMinor = Math.min(...minorForSymbol);
             lowestMinorValue = lowestMinor.toFixed(4);
+            
+            // Check Minor value monitoring (F5 triggers)
+            if (activeExecutions[symbolKey] && activeExecutions[symbolKey].storedMinor !== undefined && activeExecutions[symbolKey].minorState === 'Active') {
+                const execution = activeExecutions[symbolKey];
+                const currentMinor = parseFloat(minorValue);
+                const targetMinor = parseFloat(execution.storedMinor);
+                const isTriggered = currentMinor <= targetMinor;
+                
+                if (isTriggered && execution.minorRemaining > 0) {
+                    // Play double beep for F5 trigger
+                    playF5Beep();
+                    
+                    // Get the scrip symbol (main symbol from mainFilterResults)
+                    const scripSymbol = matchingMain.s;
+                    
+                    // Send F5 trigger to Python socket server
+                    sendTriggerF5(symbolKey, scripSymbol).then(() => {
+                        // Decrement minor remaining triggers
+                        activeExecutions[symbolKey].minorRemaining--;
+                        const newMinorRemaining = activeExecutions[symbolKey].minorRemaining;
+                        
+                        // Send updated minor trigger count to histogram clients
+                        sendMinorTriggerCountUpdate(symbolKey, newMinorRemaining);
+                        
+                        // If no minor triggers remaining, reset minor monitoring
+                        if (newMinorRemaining <= 0) {
+                            console.log(`🏁 All minor triggers used for ${symbolKey}. Resetting minor monitoring.`);
+                            sendMinorExecutionReset(symbolKey);
+                            delete activeExecutions[symbolKey].storedMinor;
+                            delete activeExecutions[symbolKey].minorDepth;
+                            delete activeExecutions[symbolKey].minorRemaining;
+                            delete activeExecutions[symbolKey].minorState;
+                            
+                            // If no major monitoring either, remove completely
+                            if (!activeExecutions[symbolKey].storedMajor) {
+                                delete activeExecutions[symbolKey];
+                            }
+                        }
+                    }).catch(error => {
+                        // Silently handle F5 trigger errors
+                    });
+                }
+            }
         }
         const minorColumn = minorValue.padEnd(9);
         
