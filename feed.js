@@ -2,6 +2,7 @@ const WebSocket = require('ws');
 const path = require('path');
 const { exec } = require('child_process');
 const net = require('net');
+const fs = require('fs');
 
 // Audio notification functions
 function playF4Beep() {
@@ -51,12 +52,289 @@ const headers = {
     'Origin': 'https://csapis.com'
 };
 
+// WebSocket connection function
+function connectWebSocket() {
+    try {
+        connectionAttempts++;
+        const timeSinceLastAttempt = Date.now() - lastConnectionAttempt;
+        lastConnectionAttempt = Date.now();
+        
+        console.log(`🔄 Connection attempt #${connectionAttempts}`);
+        console.log(`🕒 Time since last attempt: ${timeSinceLastAttempt}ms`);
+        
+        // Check for multiple connections
+        if (wsConnection) {
+            console.log(`🔍 Existing connection state: ${wsConnection.readyState}`);
+            console.log(`🔍 OPEN=${WebSocket.OPEN}, CONNECTING=${WebSocket.CONNECTING}, CLOSING=${WebSocket.CLOSING}, CLOSED=${WebSocket.CLOSED}`);
+            
+            if (wsConnection.readyState === WebSocket.OPEN) {
+                console.log('⚠️ MULTIPLE CONNECTION DETECTED - Connection already open - ABORTING');
+                return;
+            }
+            if (wsConnection.readyState === WebSocket.CONNECTING) {
+                console.log('⚠️ MULTIPLE CONNECTION DETECTED - Connection already connecting - ABORTING');
+                return;
+            }
+        }
+        
+        console.log('🔄 Creating new WebSocket connection...');
+        
+        // Create WebSocket with Node.js specific options for stability
+        const options = {
+            headers: headers,
+            // Node.js WebSocket specific options
+            rejectUnauthorized: false,  // Handle SSL issues
+            followRedirects: false,     // Don't follow redirects
+            maxRedirects: 0,           // No redirects
+            // Remove any aggressive timeouts
+            timeout: 0                  // No connection timeout
+        };
+        
+        wsConnection = new WebSocket(wsUrl, options);
+        
+        wsConnection.on('open', () => {
+            bottomInfo.status = 'Connected to WebSocket feed';
+            console.log(`✅ WebSocket connected successfully (attempt #${connectionAttempts})`);
+            console.log('🔍 Connection state:', wsConnection.readyState);
+            console.log('🔍 Connection URL:', wsConnection.url);
+            
+            // Track connection time for debugging
+            wsConnection.connectTime = Date.now();
+            
+            // Display will update when messages start flowing
+        });
+        
+        wsConnection.on('message', (data) => {
+            const message = data.toString();
+            bottomInfo.messageCount++;
+            bottomInfo.time = new Date().toLocaleTimeString();
+            bottomInfo.status = 'Receiving data...';
+            
+            // Process message through filter layers
+            processMessageFilters(message);
+            
+            // Check if we need to rebuild histogram data (after receiving some initial data)
+            if (bottomInfo.messageCount === 100 && majorValues.length === 0 && filteredSymbols.length > 0) {
+                rebuildHistogramData();
+            }
+            
+            // Update display (throttled)
+            updateDisplay();
+        });
+        
+        // No pong handler needed - no heartbeat mechanism
+        
+        wsConnection.on('error', (error) => {
+            bottomInfo.status = `Error: ${error.message}`;
+            console.error('❌ WebSocket error:', error.message);
+            
+            // Save data on error
+            saveArrayData();
+            
+            // NO AUTOMATIC RECONNECTION on errors either
+            console.log('🛑 WebSocket error - no automatic reconnection');
+        });
+        
+        wsConnection.on('close', (code, reason) => {
+            bottomInfo.status = 'WebSocket connection closed';
+            console.log(`🔌 WebSocket closed with code: ${code}, Reason: ${reason || 'No reason provided'}`);
+            console.log('🔍 Connection duration:', Date.now() - (wsConnection.connectTime || 0), 'ms');
+            console.log('🔍 Messages received:', bottomInfo.messageCount);
+            console.log('🔍 Total connection attempts so far:', connectionAttempts);
+            
+            // Check if rapid disconnects are happening
+            const connectionDuration = Date.now() - (wsConnection.connectTime || 0);
+            if (connectionDuration < 5000) { // Less than 5 seconds
+                console.log('⚠️ RAPID DISCONNECT DETECTED - Connection lasted less than 5 seconds!');
+            }
+            
+            // Save data when connection closes
+            saveArrayData();
+            
+            // NO AUTOMATIC RECONNECTION - let the connection stay closed
+            console.log('� Connection closed - no automatic reconnection');
+        });
+        
+    } catch (error) {
+        console.error('❌ Failed to create WebSocket connection:', error);
+        console.log('� Connection creation failed - no automatic retry');
+    }
+}
+
+// Manual reconnection function (call manually if needed)
+function manualReconnect() {
+    console.log('🔄 Manual reconnection requested...');
+    console.log('📞 MANUAL RECONNECT CALLED - This should only happen on user request');
+    connectWebSocket();
+}
+
 
 
 let filteredSymbols = []; // Array to store objects with 's' and 'v' values from filtered messages
 let mainFilterResults = []; // Array to store results from MainFilter1
 let majorValues = []; // Array to store Major values with symbol combinations
 let minorValues = []; // Array to store Minor values with symbol combinations
+
+// WebSocket connection management
+let wsConnection = null;
+let connectionAttempts = 0;
+let lastConnectionAttempt = 0;
+
+// Data persistence
+const DATA_DIR = './data';
+let currentDataFile = null;
+
+// Create data directory if it doesn't exist
+function ensureDataDirectory() {
+    if (!fs.existsSync(DATA_DIR)) {
+        fs.mkdirSync(DATA_DIR, { recursive: true });
+        console.log(`Created data directory: ${DATA_DIR}`);
+    }
+}
+
+// Get current date string for filename
+function getCurrentDateString() {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+// Save array data to file
+function saveArrayData() {
+    try {
+        ensureDataDirectory();
+        
+        const dateString = getCurrentDateString();
+        const filename = `market-data-${dateString}.json`;
+        const filepath = path.join(DATA_DIR, filename);
+        
+        // Save essential state data and current histogram data
+        const dataToSave = {
+            timestamp: new Date().toISOString(),
+            activeExecutions: activeExecutions, // Active trading states
+            sessionStats: {
+                messageCount: bottomInfo.messageCount,
+                filteredCount: bottomInfo.filteredCount,
+                mainFilterCount: bottomInfo.mainFilterCount
+            },
+            histogramData: {
+                majorValues: majorValues, // Save current histogram calculations
+                minorValues: minorValues,
+                dataTimestamp: new Date().toISOString()
+            }
+        };
+        
+        fs.writeFileSync(filepath, JSON.stringify(dataToSave, null, 2));
+        console.log(`📁 Data saved to: ${filename}`);
+        currentDataFile = filepath;
+        
+    } catch (error) {
+        console.error('Error saving array data:', error);
+    }
+}
+
+// Load array data from file
+function loadArrayData() {
+    try {
+        ensureDataDirectory();
+        
+        const dateString = getCurrentDateString();
+        const filename = `market-data-${dateString}.json`;
+        const filepath = path.join(DATA_DIR, filename);
+        
+        if (fs.existsSync(filepath)) {
+            const fileContent = fs.readFileSync(filepath, 'utf8');
+            const savedData = JSON.parse(fileContent);
+            
+            // Start fresh with symbol arrays but restore histogram data if available
+            filteredSymbols = []; // Always start fresh from live feed
+            mainFilterResults = []; // Always start fresh from live feed  
+            activeExecutions = savedData.activeExecutions || {};
+            
+            // Restore histogram data if available and recent (within last hour)
+            if (savedData.histogramData) {
+                const dataAge = new Date() - new Date(savedData.histogramData.dataTimestamp);
+                const oneHourMs = 60 * 60 * 1000;
+                
+                if (dataAge < oneHourMs) {
+                    majorValues = savedData.histogramData.majorValues || [];
+                    minorValues = savedData.histogramData.minorValues || [];
+                    console.log(`📊 Restored histogram data: ${majorValues.length} major, ${minorValues.length} minor values`);
+                } else {
+                    majorValues = [];
+                    minorValues = [];
+                    console.log(`⏰ Histogram data expired (${Math.round(dataAge / 60000)} minutes old) - starting fresh`);
+                }
+            } else {
+                majorValues = [];
+                minorValues = [];
+                console.log(`📊 No histogram data found - will rebuild from live feed`);
+            }
+            
+            // Restore session stats if available
+            if (savedData.sessionStats) {
+                bottomInfo.messageCount = savedData.sessionStats.messageCount || 0;
+                bottomInfo.filteredCount = savedData.sessionStats.filteredCount || 0;
+                bottomInfo.mainFilterCount = savedData.sessionStats.mainFilterCount || 0;
+            }
+            
+            console.log(`📂 State loaded from: ${filename}`);
+            console.log(`   - Active executions: ${Object.keys(activeExecutions).length}`);
+            console.log(`   - Symbol arrays will rebuild from live feed data`);
+            
+            currentDataFile = filepath;
+            return true;
+        } else {
+            console.log(`📂 No existing state file found for today (${filename}) - starting fresh`);
+            return false;
+        }
+        
+    } catch (error) {
+        console.error('Error loading state data:', error);
+        return false;
+    }
+}
+
+// Auto-save data periodically
+function startAutoSave() {
+    // Save data every 2 minutes for better histogram data preservation
+    setInterval(() => {
+        saveArrayData();
+    }, 2 * 60 * 1000);
+    
+    // Clean up major/minor values arrays every 15 minutes to prevent memory bloat
+    setInterval(() => {
+        cleanupHistoricalValues();
+    }, 15 * 60 * 1000);
+    
+    // Auto-save is now handled by the periodic interval above
+    // WebSocket disconnect saves are handled directly in the connection handlers
+}
+
+// Clean up historical major/minor values to keep only recent entries
+function cleanupHistoricalValues() {
+    const maxEntries = 2000; // Keep last 2000 entries per array for better histogram continuity
+    
+    if (majorValues.length > maxEntries) {
+        const removedCount = majorValues.length - maxEntries;
+        majorValues = majorValues.slice(-maxEntries);
+        console.log(`🧹 Cleaned up majorValues array: removed ${removedCount} old entries, kept last ${maxEntries}`);
+    }
+    
+    if (minorValues.length > maxEntries) {
+        const removedCount = minorValues.length - maxEntries;
+        minorValues = minorValues.slice(-maxEntries);
+        console.log(`🧹 Cleaned up minorValues array: removed ${removedCount} old entries, kept last ${maxEntries}`);
+    }
+}
+
+// No heartbeat mechanism needed for active market data feed
+// Continuous message flow naturally maintains connection health
+
+// Connection health is now managed purely by heartbeat mechanism
+// No artificial timeouts that could interfere with healthy connections
 
 // Histogram tracking
 let histogramWindowOpened = false;
@@ -75,6 +353,11 @@ function createHistogramServer() {
     histogramServer.on('connection', (ws) => {
         console.log('Histogram window connected');
         histogramClients.push(ws);
+        
+        // Rebuild histogram data from current symbols if arrays are empty
+        if (majorValues.length === 0 && minorValues.length === 0 && filteredSymbols.length > 0) {
+            rebuildHistogramData();
+        }
         
         // Send initial data if available
         sendHistogramUpdate();
@@ -190,16 +473,48 @@ function openHistogramWindow() {
     });
 }
 
+// Function to rebuild histogram data from current live symbols
+function rebuildHistogramData() {
+    if (filteredSymbols.length === 0 || mainFilterResults.length === 0) return;
+    
+    console.log('🔄 Rebuilding histogram data from current live symbols...');
+    
+    // Generate initial major/minor values for existing symbol combinations
+    for (let i = 0; i < Math.min(50, filteredSymbols.length); i++) {
+        const filteredItem = filteredSymbols[i];
+        const matchingMain = findMatchingMainFilter(filteredItem);
+        
+        if (matchingMain && filteredItem.bp && matchingMain.ap && filteredItem.ap && matchingMain.bp) {
+            const symbolKey = `${filteredItem.s}-${matchingMain.s}`;
+            
+            // Calculate and store Major value
+            const major = filteredItem.bp - matchingMain.ap;
+            majorValues.push({ key: symbolKey, value: major });
+            
+            // Calculate and store Minor value
+            const minor = Math.abs(matchingMain.bp - filteredItem.ap);
+            minorValues.push({ key: symbolKey, value: minor });
+        }
+    }
+    
+    console.log(`📊 Rebuilt histogram data: ${majorValues.length} major values, ${minorValues.length} minor values`);
+    
+    // Send immediate histogram update if clients are connected
+    if (histogramClients.length > 0) {
+        sendHistogramUpdate();
+    }
+}
+
 // Function to send histogram data to connected clients
 function sendHistogramUpdate() {
     if (histogramClients.length === 0) return;
     
-    // Get currently active symbol combinations from top 20 filtered symbols
+    // Get currently active symbol combinations from top 50 filtered symbols
     const activeSymbolKeys = new Set();
     const symbolMinGaps = {}; // Store Min Gap values for each symbol combination
     const symbolPrices = {}; // Store Price values for each symbol combination
     
-    for (let i = 0; i < Math.min(20, filteredSymbols.length); i++) {
+    for (let i = 0; i < Math.min(50, filteredSymbols.length); i++) {
         const filteredItem = filteredSymbols[i];
         const matchingMain = findMatchingMainFilter(filteredItem);
         if (matchingMain) {
@@ -581,9 +896,9 @@ function mainFilter1(messageObj) {
                     // Sort by volume in descending order
                     mainFilterResults.sort((a, b) => b.v - a.v);
                     
-                    // Keep only top 20 results
-                    if (mainFilterResults.length > 20) {
-                        mainFilterResults = mainFilterResults.slice(0, 20);
+                    // Keep only top 50 results
+                    if (mainFilterResults.length > 50) {
+                        mainFilterResults = mainFilterResults.slice(0, 50);
                     }
                 }
                 
@@ -643,9 +958,9 @@ function processMessageFilters(rawMessage) {
                         // Sort array by volume in descending order
                         filteredSymbols.sort((a, b) => b.v - a.v);
                         
-                        // Keep only top 20 symbols (limit array size)
-                        if (filteredSymbols.length > 20) {
-                            filteredSymbols = filteredSymbols.slice(0, 20);
+                        // Keep only top 50 symbols (limit array size)
+                        if (filteredSymbols.length > 50) {
+                            filteredSymbols = filteredSymbols.slice(0, 50);
                         }
                     }
                 }
@@ -898,38 +1213,41 @@ function updateDisplay(forceUpdate = false) {
     // Note: recentlyUpdated symbols are now cleared automatically after 0.5 seconds via setTimeout
 }
 
-const ws = new WebSocket(wsUrl, { headers });
-
-// Initialize display
-initDisplay();
-
-ws.on('open', () => {
-    bottomInfo.status = 'Connected to WebSocket feed';
-    updateDisplay(true); // Force initial display
-});
-
-ws.on('message', (data) => {
-    const message = data.toString();
-    bottomInfo.messageCount++;
-    bottomInfo.time = new Date().toLocaleTimeString();
-    bottomInfo.status = 'Receiving data...';
+// Initialize application
+function initializeApplication() {
+    // Initialize display
+    initDisplay();
     
-    // Process message through filter layers
-    processMessageFilters(message);
+    // Load existing data for today
+    const dataLoaded = loadArrayData();
     
-    // Update display (throttled)
-    updateDisplay();
-});
+    if (dataLoaded) {
+        console.log('📊 Restored active trading states and histogram data');
+        
+        // If histogram data was loaded, send immediate update when histogram client connects
+        if (majorValues.length > 0 || minorValues.length > 0) {
+            console.log('📈 Histogram data ready for immediate display');
+        }
+    } else {
+        console.log('🆕 Starting fresh session for today');
+    }
+    
+    // Start auto-save mechanism
+    startAutoSave();
+    
+    // Connect to WebSocket
+    connectWebSocket();
+    
+    // Set up a delayed histogram rebuild check after WebSocket has time to receive initial data
+    setTimeout(() => {
+        if (filteredSymbols.length > 0 && majorValues.length === 0) {
+            rebuildHistogramData();
+        }
+    }, 10000); // Wait 10 seconds for initial data to populate
+}
 
-ws.on('error', (error) => {
-    bottomInfo.status = `Error: ${error.message}`;
-    updateDisplay(true); // Force display for errors
-});
-
-ws.on('close', () => {
-    bottomInfo.status = 'WebSocket connection closed';
-    updateDisplay(true); // Force display for connection close
-});
+// Start the application
+initializeApplication();
 
 
 
@@ -943,9 +1261,40 @@ setInterval(() => {
 
 // Handle graceful exit
 process.on('SIGINT', () => {
-    console.log('Application terminated');
+    console.log('🛑 Application shutting down...');
+    
+    // Save data before exit
+    console.log('💾 Saving data before exit...');
+    saveArrayData();
+    
+    // Clean up WebSocket connection
+    if (wsConnection) {
+        wsConnection.close();
+    }
+    
+    // Close histogram server
     if (histogramServer) {
         histogramServer.close();
     }
+    
+    console.log('✅ Application terminated gracefully');
     process.exit(0);
+});
+
+// Handle other exit scenarios
+process.on('SIGTERM', () => {
+    console.log('🛑 Received SIGTERM, shutting down gracefully...');
+    saveArrayData();
+    process.exit(0);
+});
+
+process.on('uncaughtException', (error) => {
+    console.error('💥 Uncaught Exception:', error);
+    saveArrayData();
+    process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('💥 Unhandled Rejection at:', promise, 'reason:', reason);
+    saveArrayData();
 });
