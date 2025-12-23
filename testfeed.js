@@ -1,25 +1,33 @@
 const WebSocket = require('ws');
 
 // WebSocket connection details
-const wsUrl = 'wss://csapis.com/2.0/market/feed/full';
-const headers = {
-    'Authorization': 'Bearer aW50Z2VxIGY2ZjUxZjliMTgyMzJjMmUxZGFkZWQ1ZDRjMDFjNjZm',
-    'Origin': 'https://csapis.com'
-};
+const wsUrl = 'ws://163.47.11.129:8080';
+
+// Symbols to subscribe to
+const symbols = ["BOP", "TRG"];
 
 console.log('🔄 Connecting to WebSocket feed...');
 console.log('📡 URL:', wsUrl);
-console.log('🔑 Authorization: Bearer aW50Z2VxIGY2ZjUxZjliMTgyMzJjMmUxZGFkZWQ1ZDRjMDFjNjZm');
 console.log('');
 
-// Create WebSocket connection
-const ws = new WebSocket(wsUrl, { headers });
+// Create WebSocket connection (no authentication)
+const ws = new WebSocket(wsUrl);
 
 let messageCount = 0;
 let startTime = null;
 
 ws.on('open', () => {
     console.log('✅ Connected to WebSocket feed');
+    
+    // Subscribe to symbols
+    const subscribeMessage = {
+        type: "subscribe",
+        symbols: symbols
+    };
+    
+    console.log('📤 Sending subscription request:', JSON.stringify(subscribeMessage));
+    ws.send(JSON.stringify(subscribeMessage));
+    
     console.log('📊 Listening for messages...');
     console.log('');
     startTime = Date.now();
