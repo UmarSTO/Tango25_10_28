@@ -1,7 +1,7 @@
 const WebSocket = require('ws');
 
 // WebSocket connection details
-const wsUrl = 'ws://163.47.11.129:8080';
+const wsUrl = 'wss://feed.iel.net.pk';
 
 // Symbols to subscribe to
 const symbols = ["BOP", "TRG"];
@@ -10,8 +10,10 @@ console.log('🔄 Connecting to WebSocket feed...');
 console.log('📡 URL:', wsUrl);
 console.log('');
 
-// Create WebSocket connection (no authentication)
-const ws = new WebSocket(wsUrl);
+// Create WebSocket connection (no authentication, accept self-signed certificates)
+const ws = new WebSocket(wsUrl, {
+    rejectUnauthorized: false
+});
 
 let messageCount = 0;
 let startTime = null;
