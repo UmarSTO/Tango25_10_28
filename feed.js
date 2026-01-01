@@ -3,6 +3,7 @@ const path = require('path');
 const { exec } = require('child_process');
 const net = require('net');
 const fs = require('fs');
+const orderManager = require('./orderManager');
 
 // Audio notification functions
 function playF4Beep() {
@@ -46,11 +47,7 @@ function playF5Beep() {
     }
 }
 
-const wsUrl = 'wss://csapis.com/2.0/market/feed/full';
-const headers = {
-    'Authorization': 'Bearer aW50Z2VxIGY2ZjUxZjliMTgyMzJjMmUxZGFkZWQ1ZDRjMDFjNjZm',
-    'Origin': 'https://csapis.com'
-};
+const wsUrl = 'wss://feed.iel.net.pk';
 
 // WebSocket connection function
 function connectWebSocket() {
@@ -81,7 +78,7 @@ function connectWebSocket() {
         
         // Create WebSocket with Node.js specific options for stability
         const options = {
-            headers: headers,
+            // headers: headers,
             // Node.js WebSocket specific options
             rejectUnauthorized: false,  // Handle SSL issues
             followRedirects: false,     // Don't follow redirects
@@ -346,6 +343,65 @@ let activeExecutions = {}; // Track active symbol combinations and their stored 
 let pythonSocketHost = 'localhost';
 let pythonSocketPort = 9999;
 
+// Order log management
+const ORDER_LOG_FILE = path.join(__dirname, 'order_logs.txt');
+let orderLogTerminalLaunched = false;
+
+// Initialize order log file
+function initOrderLogFile() {
+    // Create/clear the order log file
+    const timestamp = new Date().toLocaleString();
+    fs.writeFileSync(ORDER_LOG_FILE, `=== Order Execution Logs - Session Started: ${timestamp} ===\n\n`);
+    console.log(`📝 Order log file initialized: ${ORDER_LOG_FILE}`);
+    
+    // Launch a separate terminal to tail the order logs
+    launchOrderLogTerminal();
+}
+
+// Launch a separate terminal to display order logs
+function launchOrderLogTerminal() {
+    if (orderLogTerminalLaunched) return;
+    orderLogTerminalLaunched = true;
+    
+    let terminalCommand;
+    
+    // Detect OS and use appropriate terminal command
+    if (process.platform === 'linux') {
+        // Linux - try common terminal emulators
+        terminalCommand = `gnome-terminal --title="Order Execution Logs" -- bash -c "tail -f '${ORDER_LOG_FILE}'; exec bash" || xterm -T "Order Execution Logs" -e "tail -f '${ORDER_LOG_FILE}'" || konsole --title "Order Execution Logs" -e "tail -f '${ORDER_LOG_FILE}'"`;
+    } else if (process.platform === 'darwin') {
+        // macOS
+        terminalCommand = `osascript -e 'tell app "Terminal" to do script "tail -f ${ORDER_LOG_FILE}"'`;
+    } else if (process.platform === 'win32') {
+        // Windows
+        terminalCommand = `start cmd /k "type ${ORDER_LOG_FILE} & timeout /t 1 > nul & powershell Get-Content ${ORDER_LOG_FILE} -Wait"`;
+    }
+    
+    if (terminalCommand) {
+        exec(terminalCommand, (error) => {
+            if (error) {
+                console.error('⚠️  Could not launch order log terminal:', error.message);
+                console.log('💡 You can manually tail the order logs with: tail -f ' + ORDER_LOG_FILE);
+            } else {
+                console.log('✅ Order log terminal launched');
+            }
+        });
+    }
+}
+
+// Function to add order log message
+function addOrderLog(message) {
+    const timestamp = new Date().toLocaleTimeString();
+    const logLine = `[${timestamp}] ${message}\n`;
+    
+    // Append to order log file
+    try {
+        fs.appendFileSync(ORDER_LOG_FILE, logLine);
+    } catch (error) {
+        console.error('Error writing to order log file:', error);
+    }
+}
+
 // Function to create histogram WebSocket server
 function createHistogramServer() {
     histogramServer = new WebSocket.Server({ port: 8080 });
@@ -464,7 +520,19 @@ function openHistogramWindow() {
     
     // Open the HTML file in default browser
     const histogramPath = path.join(__dirname, 'histogram.html');
-    exec(`start "" "${histogramPath}"`, (error) => {
+    
+    // Detect OS and use appropriate command
+    let openCommand;
+    if (process.platform === 'win32') {
+        openCommand = `start "" "${histogramPath}"`;
+    } else if (process.platform === 'darwin') {
+        openCommand = `open "${histogramPath}"`;
+    } else {
+        // Linux
+        openCommand = `xdg-open "${histogramPath}"`;
+    }
+    
+    exec(openCommand, (error) => {
         if (error) {
             console.error('Error opening histogram window:', error);
         } else {
@@ -699,82 +767,99 @@ function sendMinorExecutionReset(symbolKey) {
     console.log(`Sent minor execution reset for ${symbolKey}`);
 }
 
-// Function to send TRIGGER_F4 to Python socket server
+// Function to send TRIGGER_F4 to Order API via orderManager
 function sendTriggerF4(symbolKey, scripSymbol, futScrip, futScripBp) {
     return new Promise((resolve, reject) => {
-        const client = net.createConnection(pythonSocketPort, pythonSocketHost);
+        // Check if order connection is ready
+        if (!orderManager.isOrderConnectionReady()) {
+            reject(new Error('Order WebSocket is not connected'));
+            return;
+        }
         
-        client.on('connect', () => {
-            // Create trigger package with additional information
-            const triggerPackage = JSON.stringify({
-                command: 'TRIGGER_F4',
-                symbolKey: symbolKey,
-                scrip: scripSymbol,
-                futScrip: futScrip,
-                futScripBp: futScripBp,
-                timestamp: new Date().toISOString()
+        // F4: Buy the main scrip (REG market) and Short Sell the future scrip (FUT market)
+        
+        // Order 1: BUY main scrip (regular market)
+        const buyMainOrder = orderManager.placeOrder({
+            clientCode: '10020',
+            symbol: scripSymbol,
+            side: 'Buy',
+            orderType: 'MKT',
+            marketType: 'REG',
+            volume: 500,
+            triggerPrice: 0,
+            orderProperty: 111
+        });
+        
+        // Wait 100ms before placing second order
+        setTimeout(() => {
+            // Order 2: SHORT SELL future scrip
+            const shortSellFutureOrder = orderManager.placeOrder({
+                clientCode: '10020',
+                symbol: futScrip,
+                side: 'Buy',
+                orderType: 'SHS',
+                marketType: 'FUT',
+                volume: 500,
+                price: futScripBp,
+                triggerPrice: 0,
+                orderProperty: 111
             });
             
-            client.write(triggerPackage);
-        });
-        
-        client.on('data', (data) => {
-            const response = data.toString().trim();
-            client.end();
-            
-            if (response === 'F4_TRIGGERED') {
+            if (buyMainOrder && shortSellFutureOrder) {
+                const logMsg = `✅ F4: BUY ${scripSymbol} (500@REG) + SHORT SELL ${futScrip} (500@FUT@${futScripBp})`;
+                addOrderLog(logMsg);
+                console.log(logMsg);
                 resolve(true);
             } else {
-                reject(new Error(`Unexpected response: ${response}`));
+                reject(new Error('Failed to place F4 orders'));
             }
-        });
-        
-        client.on('error', (error) => {
-            reject(error);
-        });
-        
-        client.on('close', () => {
-            // Connection closed
-        });
+        }, 1000); // 1000ms delay
     });
 }
 
-// Function to send TRIGGER_F5 to Python socket server
+// Function to send TRIGGER_F5 to Order API via orderManager
 function sendTriggerF5(symbolKey, scripSymbol, futScrip) {
     return new Promise((resolve, reject) => {
-        const client = net.createConnection(pythonSocketPort, pythonSocketHost);
+        // Check if order connection is ready
+        if (!orderManager.isOrderConnectionReady()) {
+            reject(new Error('Order WebSocket is not connected'));
+            return;
+        }
         
-        client.on('connect', () => {
-            // Create trigger package with additional information
-            const triggerPackage = JSON.stringify({
-                command: 'TRIGGER_F5',
-                symbolKey: symbolKey,
-                scrip: scripSymbol,
-                futScrip: futScrip,
-                timestamp: new Date().toISOString()
-            });
-            
-            client.write(triggerPackage);
+        // F5: Buy the future scrip (FUT market) and Sell the main scrip (REG market)
+        
+        // Order 1: BUY future scrip
+        const buyFutureOrder = orderManager.placeOrder({
+            clientCode: '10020',
+            symbol: futScrip,
+            side: 'BUY',
+            orderType: 'MKT',
+            marketType: 'FUT',
+            volume: 500,
+            triggerPrice: 0,
+            orderProperty: 111
         });
         
-        client.on('data', (data) => {
-            const response = data.toString().trim();
-            client.end();
-            
-            if (response === 'F5_TRIGGERED') {
-                resolve(true);
-            } else {
-                reject(new Error(`Unexpected response: ${response}`));
-            }
+        // Order 2: SELL main scrip (regular market)
+        const sellMainOrder = orderManager.placeOrder({
+            clientCode: '10020',
+            symbol: scripSymbol,
+            side: 'SELL',
+            orderType: 'MKT',
+            marketType: 'REG',
+            volume: 500,
+            triggerPrice: 0,
+            orderProperty: 111
         });
         
-        client.on('error', (error) => {
-            reject(error);
-        });
-        
-        client.on('close', () => {
-            // Connection closed
-        });
+        if (buyFutureOrder && sellMainOrder) {
+            const logMsg = `✅ F5: BUY ${futScrip} (500@FUT) + SELL ${scripSymbol} (500@REG)`;
+            addOrderLog(logMsg);
+            console.log(logMsg);
+            resolve(true);
+        } else {
+            reject(new Error('Failed to place F5 orders'));
+        }
     });
 }
 
@@ -1030,7 +1115,7 @@ function updateDisplay(forceUpdate = false) {
     console.log('Filtered Symbol'.padEnd(15) + ' │ ' + 'Price'.padEnd(9) + ' │ ' + 'Min Gap'.padEnd(8) + ' │ ' + 'Main Symbol'.padEnd(15) + ' │ ' + 'Volume'.padEnd(9) + ' │ ' + 'Major'.padEnd(9) + ' │ ' + 'Minor'.padEnd(9) + ' │ ' + 'High Major'.padEnd(9) + ' │ ' + 'Low Minor'.padEnd(9));
     console.log('─'.repeat(15) + '─┼─' + '─'.repeat(9) + '─┼─' + '─'.repeat(8) + '─┼─' + '─'.repeat(15) + '─┼─' + '─'.repeat(9) + '─┼─' + '─'.repeat(9) + '─┼─' + '─'.repeat(9) + '─┼─' + '─'.repeat(9) + '─┼─' + '─'.repeat(9));
     
-    // Display table rows
+    // Display table rows (full 20 rows now - no need to reserve space for logs)
     for (let i = 0; i < Math.min(20, filteredSymbols.length); i++) {
         const filteredItem = filteredSymbols[i];
         const matchingMain = findMatchingMainFilter(filteredItem);
@@ -1103,7 +1188,10 @@ function updateDisplay(forceUpdate = false) {
                         // Get the scrip symbol (main symbol from mainFilterResults)
                         const scripSymbol = matchingMain.s;
                         
-                        // Send F4 trigger to Python socket server
+                        // Add log message for F4 trigger
+                        addOrderLog(`🔔 F4 TRIGGERED: ${symbolKey} - Major: ${currentMajor.toFixed(4)} >= ${targetMajor.toFixed(4)}`);
+                        
+                        // Send F4 trigger to Order API
                         sendTriggerF4(symbolKey, scripSymbol, filteredItem.s, filteredItem.bp).then(() => {
                             // Decrement major remaining triggers
                             activeExecutions[symbolKey].majorRemaining--;
@@ -1127,7 +1215,7 @@ function updateDisplay(forceUpdate = false) {
                                 }
                             }
                         }).catch(error => {
-                            // Silently handle F4 trigger errors
+                            addOrderLog(`❌ F4 Order Failed: ${symbolKey} - ${error.message}`);
                         });
                     }
                 }
@@ -1165,7 +1253,10 @@ function updateDisplay(forceUpdate = false) {
                     // Get the scrip symbol (main symbol from mainFilterResults)
                     const scripSymbol = matchingMain.s;
                     
-                    // Send F5 trigger to Python socket server
+                    // Add log message for F5 trigger
+                    addOrderLog(`🔔 F5 TRIGGERED: ${symbolKey} - Minor: ${currentMinor.toFixed(4)} <= ${targetMinor.toFixed(4)}`);
+                    
+                    // Send F5 trigger to Order API
                     sendTriggerF5(symbolKey, scripSymbol, filteredItem.s).then(() => {
                         // Decrement minor remaining triggers
                         activeExecutions[symbolKey].minorRemaining--;
@@ -1189,7 +1280,7 @@ function updateDisplay(forceUpdate = false) {
                             }
                         }
                     }).catch(error => {
-                        // Silently handle F5 trigger errors
+                        addOrderLog(`❌ F5 Order Failed: ${symbolKey} - ${error.message}`);
                     });
                 }
             }
@@ -1201,22 +1292,27 @@ function updateDisplay(forceUpdate = false) {
             sendHistogramUpdate();
         }
         
-        // Column 7: Highest Major for this symbol combination
+        // Column 8: Highest Major for this symbol combination
         const highMajorColumn = highestMajorValue.padEnd(9);
         
-        // Column 8: Lowest Minor for this symbol combination
+        // Column 9: Lowest Minor for this symbol combination
         const lowMinorColumn = lowestMinorValue.padEnd(9);
         
         console.log(`${filteredSymbol} │ ${priceColumn} │ ${minGapColumn} │ ${mainSymbol} │ ${mainVolume} │ ${majorColumn} │ ${minorColumn} │ ${highMajorColumn} │ ${lowMinorColumn}`);
     }
     
-    // Note: recentlyUpdated symbols are now cleared automatically after 0.5 seconds via setTimeout
+    console.log('');
+    console.log('💡 Order execution logs are displayed in a separate terminal window');
+    console.log('📝 Log file: ' + ORDER_LOG_FILE);
 }
 
 // Initialize application
 function initializeApplication() {
     // Initialize display
     initDisplay();
+    
+    // Initialize order log file and terminal
+    initOrderLogFile();
     
     // Load existing data for today
     const dataLoaded = loadArrayData();
@@ -1235,7 +1331,15 @@ function initializeApplication() {
     // Start auto-save mechanism
     startAutoSave();
     
-    // Connect to WebSocket
+    // Initialize Order WebSocket connection
+    console.log('🔌 Initializing Order API WebSocket...');
+    orderManager.initializeOrderConnection(() => {
+        const msg = '✅ Order API WebSocket ready for order execution';
+        console.log(msg);
+        addOrderLog(msg);
+    });
+    
+    // Connect to Market Data WebSocket
     connectWebSocket();
     
     // Set up a delayed histogram rebuild check after WebSocket has time to receive initial data
@@ -1277,6 +1381,9 @@ process.on('SIGINT', () => {
         histogramServer.close();
     }
     
+    // Disconnect order WebSocket
+    orderManager.disconnectOrderConnection();
+    
     console.log('✅ Application terminated gracefully');
     process.exit(0);
 });
@@ -1285,12 +1392,14 @@ process.on('SIGINT', () => {
 process.on('SIGTERM', () => {
     console.log('🛑 Received SIGTERM, shutting down gracefully...');
     saveArrayData();
+    orderManager.disconnectOrderConnection();
     process.exit(0);
 });
 
 process.on('uncaughtException', (error) => {
     console.error('💥 Uncaught Exception:', error);
     saveArrayData();
+    orderManager.disconnectOrderConnection();
     process.exit(1);
 });
 

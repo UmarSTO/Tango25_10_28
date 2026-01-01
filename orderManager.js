@@ -1,9 +1,30 @@
 const WebSocket = require('ws');
 const SockJS = require('sockjs-client');
 const Stomp = require('stompjs');
+const fs = require('fs');
+const path = require('path');
 
 // WebSocket connection details
 const wsUrl = 'https://trade.iel.net.pk:1219/order-dispatch-websocket';
+
+// Order log file path
+const ORDER_LOG_FILE = path.join(__dirname, 'order_logs.txt');
+
+// Helper function to log to both console and file
+function logToOrderFile(message) {
+    const timestamp = new Date().toLocaleTimeString();
+    const fullMessage = `[${timestamp}] ${message}`;
+    
+    // Log to console
+    console.log(fullMessage);
+    
+    // Log to file
+    try {
+        fs.appendFileSync(ORDER_LOG_FILE, fullMessage + '\n');
+    } catch (error) {
+        console.error('Error writing to order log:', error);
+    }
+}
 
 // Authentication credentials
 const authHeaders = {
@@ -11,71 +32,97 @@ const authHeaders = {
     'nostr': 'Lahore123'
 };
 
-console.log('🔄 Connecting to Order WebSocket...');
-console.log('📡 URL:', wsUrl);
-console.log('🔑 Auth ID:', authHeaders.id);
-console.log('');
-
-// Create SockJS connection
-const sock = new SockJS(wsUrl, null, {
-    headers: authHeaders,
-    transports: ['websocket', 'xhr-streaming', 'xhr-polling']
-});
-
-// Create STOMP client over SockJS
-const stompClient = Stomp.over(sock);
-
+let stompClient = null;
 let isConnected = false;
+let connectionCallback = null;
 
-// Connect to STOMP
-stompClient.connect(authHeaders, function(frame) {
-    console.log('✅ Connected to Order WebSocket via STOMP');
-    console.log('📊 Ready to place orders...');
-    console.log('');
-    isConnected = true;
+/**
+ * Initialize the order WebSocket connection
+ * @param {Function} onConnect - Callback function to execute when connected
+ */
+function initializeOrderConnection(onConnect) {
+    connectionCallback = onConnect;
     
-    // Send login details to the destination (just the id as a string)
-    const loginId = authHeaders.id;
-    
-    console.log('📤 Sending login details to /app/order-service/login-details');
-    console.log('Login ID:', loginId);
-    console.log('');
-    
-    stompClient.send('/app/order-service/login-details', {}, loginId);
-    
-    // Subscribe to receive responses
-    stompClient.subscribe(`/user/${loginId}/order-service.notify`, function(message) {
-        const timestamp = new Date().toISOString();
-        console.log(`📨 [${timestamp}] Login Response:`);
-        console.log(message.body);
-        console.log('─'.repeat(80));
+    logToOrderFile('🔄 Connecting to Order WebSocket...');
+    logToOrderFile('📡 URL: ' + wsUrl);
+    logToOrderFile('🔑 Auth ID: ' + authHeaders.id);
+    logToOrderFile('');
+
+    // Create SockJS connection
+    const sock = new SockJS(wsUrl, null, {
+        headers: authHeaders,
+        transports: ['websocket', 'xhr-streaming', 'xhr-polling']
     });
+
+    // Create STOMP client over SockJS
+    stompClient = Stomp.over(sock);
     
-    // Subscribe to general responses
-    // stompClient.subscribe(`/user/${loginId}/order-updates`, function(message) {
-    //     const timestamp = new Date().toISOString();
-    //     console.log(`� [${timestamp}] Order Update:`);
-    //     console.log(message.body);
-    //     console.log('─'.repeat(80));
-    // });
-    
-    // Example: Place an order after connection
-    // Uncomment and modify the parameters as needed
-    
-    placeOrder({
-        clientCode: '10020',
-        symbol: 'WTL',
-        side: 'SELL',
-        price: 1.75,
-        volume: 15,
-        triggerPrice: 0
+    // Disable STOMP debug output (we'll handle logging ourselves)
+    stompClient.debug = null;
+
+    // Connect to STOMP
+    stompClient.connect(authHeaders, function(frame) {
+        logToOrderFile('✅ Connected to Order WebSocket via STOMP');
+        logToOrderFile('📊 Frame: ' + JSON.stringify(frame));
+        logToOrderFile('📊 Ready to place orders...');
+        logToOrderFile('');
+        isConnected = true;
+        
+        // Send login details to the destination (just the id as a string)
+        const loginId = authHeaders.id;
+        
+        logToOrderFile('📤 Sending login details to /app/order-service/login-details');
+        logToOrderFile('   Login ID: ' + loginId);
+        logToOrderFile('');
+        
+        stompClient.send('/app/order-service/login-details', {}, loginId);
+        
+        // Subscribe to receive responses
+        const subscriptionPath = `/user/${loginId}/order-service.notify`;
+        logToOrderFile('📡 Subscribing to: ' + subscriptionPath);
+        logToOrderFile('');
+        
+        stompClient.subscribe(subscriptionPath, function(message) {
+            logToOrderFile('═'.repeat(80));
+            logToOrderFile('📨 ORDER RESPONSE RECEIVED:');
+            logToOrderFile('─'.repeat(80));
+            
+            // Log raw message
+            logToOrderFile('Raw message body:');
+            logToOrderFile(message.body);
+            
+            // Try to parse and pretty print if it's JSON
+            try {
+                const parsedMessage = JSON.parse(message.body);
+                logToOrderFile('');
+                logToOrderFile('Parsed message:');
+                logToOrderFile(JSON.stringify(parsedMessage, null, 2));
+            } catch (e) {
+                // Not JSON, that's okay
+                logToOrderFile('(Message is not JSON format)');
+            }
+            
+            logToOrderFile('═'.repeat(80));
+            logToOrderFile('');
+        }, function(error) {
+            logToOrderFile('❌ Subscription error: ' + JSON.stringify(error));
+        });
+        
+        logToOrderFile('✅ Subscription established successfully');
+        logToOrderFile('');
+        
+        // Call the connection callback if provided
+        if (connectionCallback) {
+            connectionCallback();
+        }
+        
+    }, function(error) {
+        logToOrderFile('');
+        logToOrderFile('❌ STOMP connection error: ' + JSON.stringify(error));
+        logToOrderFile('Error details: ' + error.toString());
+        isConnected = false;
     });
-    
-    
-}, function(error) {
-    console.log('');
-    console.error('❌ STOMP error:', error);
-});
+}
 
 /**
  * Place an order on the WebSocket
@@ -83,23 +130,29 @@ stompClient.connect(authHeaders, function(frame) {
  * @param {string} orderParams.clientCode - Client code
  * @param {string} orderParams.symbol - Trading symbol
  * @param {string} orderParams.side - Order side (BUY/SELL)
- * @param {number} orderParams.price - Order price (0 for market orders)
+ * @param {string} orderParams.orderType - Order type (MKT, SHS, etc.)
+ * @param {string} orderParams.marketType - Market type (REG, FUT)
  * @param {number} orderParams.volume - Order volume
+ * @param {number} orderParams.price - Order price (optional, defaults to 0 for market orders)
  * @param {number} orderParams.triggerPrice - Trigger price (0 if not applicable)
+ * @param {number|string} orderParams.orderProperty - Order property (111 for regular, 'SHS' for short sell, etc.)
  */
 function placeOrder(orderParams) {
     const {
         clientCode,
         symbol,
         side,
-        price,
+        orderType,
+        marketType,
         volume,
-        triggerPrice
+        price,
+        triggerPrice,
+        orderProperty
     } = orderParams;
     
     if (!isConnected) {
-        console.error('❌ WebSocket is not connected. Cannot place order.');
-        return;
+        logToOrderFile('❌ WebSocket is not connected. Cannot place order.');
+        return false;
     }
     
     const payload = {
@@ -107,40 +160,74 @@ function placeOrder(orderParams) {
         symbol: symbol,
         side: side,
         refNo: 0,
-        price: price ? parseFloat(price) : 0,
+        price: price !== undefined ? parseFloat(price) : 0, // Use provided price or default to 0 for market orders
         volume: parseInt(volume),
         triggerPrice: triggerPrice ? parseFloat(triggerPrice) : 0,
-        orderType: "MKT",
-        marketType: "REG",
+        orderType: orderType,
+        marketType: marketType,
         userId: authHeaders.id, // Using the auth ID as userId
         actionType: "neworder",
         orignateSource: "W",
         discVolume: 0,
-        orderProperty: 111,
+        orderProperty: orderProperty !== undefined ? orderProperty : 111, // Use provided orderProperty or default to 111
         subClientCode: ""
     };
     
-    console.log('📤 Placing order:');
-    console.log(JSON.stringify(payload, null, 2));
-    console.log('');
+    logToOrderFile('┌' + '─'.repeat(78) + '┐');
+    logToOrderFile('│ 📤 PLACING ORDER:');
+    logToOrderFile('├' + '─'.repeat(78) + '┤');
+    logToOrderFile('│ Symbol: ' + symbol);
+    logToOrderFile('│ Side: ' + side);
+    logToOrderFile('│ Type: ' + orderType + ' / ' + marketType);
+    logToOrderFile('│ Volume: ' + volume);
+    logToOrderFile('│ Price: ' + payload.price);
+    logToOrderFile('│ Order Property: ' + payload.orderProperty);
+    logToOrderFile('├' + '─'.repeat(78) + '┤');
+    logToOrderFile('│ Full payload:');
+    logToOrderFile(JSON.stringify(payload, null, 2));
+    logToOrderFile('└' + '─'.repeat(78) + '┘');
+    logToOrderFile('');
 
-    stompClient.send(`/app/order-service.${JSON.stringify(payload)}`, {}, JSON.stringify(payload));
+    try {
+        const destination = `/app/order-service.${JSON.stringify(payload)}`;
+        logToOrderFile('📍 Destination: ' + destination);
+        logToOrderFile('');
+        
+        stompClient.send(destination, {}, JSON.stringify(payload));
+        logToOrderFile('✅ Order sent successfully');
+        logToOrderFile('⏳ Waiting for server response...');
+        logToOrderFile('');
+        return true;
+    } catch (error) {
+        logToOrderFile('❌ Error sending order: ' + error.toString());
+        logToOrderFile('');
+        return false;
+    }
 }
 
-// Handle graceful shutdown
-process.on('SIGINT', () => {
-    console.log('');
-    console.log('🛑 Shutting down...');
-    if (isConnected) {
+/**
+ * Check if order WebSocket is connected
+ */
+function isOrderConnectionReady() {
+    return isConnected;
+}
+
+/**
+ * Disconnect the order WebSocket
+ */
+function disconnectOrderConnection() {
+    if (isConnected && stompClient) {
+        logToOrderFile('🛑 Disconnecting Order WebSocket...');
         stompClient.disconnect();
+        isConnected = false;
+        logToOrderFile('✅ Order WebSocket disconnected');
     }
-    process.exit(0);
-});
+}
 
-console.log('💡 Press Ctrl+C to stop');
-
-// Export the placeOrder function for use in other modules
+// Export the functions for use in other modules
 module.exports = {
+    initializeOrderConnection,
     placeOrder,
-    stompClient
+    isOrderConnectionReady,
+    disconnectOrderConnection
 };

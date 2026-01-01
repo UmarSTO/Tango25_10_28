@@ -1,0 +1,498 @@
+=== Order Execution Logs - Session Started: 12/31/2025, 10:28:00 AM ===
+
+[10:28:00 AM] 🔄 Connecting to Order WebSocket...
+[10:28:00 AM] 📡 URL: https://trade.iel.net.pk:1219/order-dispatch-websocket
+[10:28:00 AM] 🔑 Auth ID: 10020
+[10:28:00 AM] 
+[10:28:00 AM] ✅ Connected to Order WebSocket via STOMP
+[10:28:00 AM] 📊 Frame: {"command":"CONNECTED","headers":{"user-name":"10020","heart-beat":"0,0","version":"1.1"},"body":""}
+[10:28:00 AM] 📊 Ready to place orders...
+[10:28:00 AM] 
+[10:28:00 AM] 📤 Sending login details to /app/order-service/login-details
+[10:28:00 AM]    Login ID: 10020
+[10:28:00 AM] 
+[10:28:00 AM] 📡 Subscribing to: /user/10020/order-service.notify
+[10:28:00 AM] 
+[10:28:00 AM] ✅ Subscription established successfully
+[10:28:00 AM] 
+[10:28:00 AM] ✅ Order API WebSocket ready for order execution
+[10:29:01 AM] 🔔 F4 TRIGGERED: SYM-JAN-SYM - Major: 0.1300 >= 0.1300
+[10:29:01 AM] ┌──────────────────────────────────────────────────────────────────────────────┐
+[10:29:01 AM] │ 📤 PLACING ORDER:
+[10:29:01 AM] ├──────────────────────────────────────────────────────────────────────────────┤
+[10:29:01 AM] │ Symbol: SYM
+[10:29:01 AM] │ Side: Buy
+[10:29:01 AM] │ Type: MKT / REG
+[10:29:01 AM] │ Volume: 500
+[10:29:01 AM] │ Price: 0
+[10:29:01 AM] │ Order Property: 111
+[10:29:01 AM] ├──────────────────────────────────────────────────────────────────────────────┤
+[10:29:01 AM] │ Full payload:
+[10:29:01 AM] {
+  "clientCode": "10020",
+  "symbol": "SYM",
+  "side": "Buy",
+  "refNo": 0,
+  "price": 0,
+  "volume": 500,
+  "triggerPrice": 0,
+  "orderType": "MKT",
+  "marketType": "REG",
+  "userId": "10020",
+  "actionType": "neworder",
+  "orignateSource": "W",
+  "discVolume": 0,
+  "orderProperty": 111,
+  "subClientCode": ""
+}
+[10:29:01 AM] └──────────────────────────────────────────────────────────────────────────────┘
+[10:29:01 AM] 
+[10:29:01 AM] 📍 Destination: /app/order-service.{"clientCode":"10020","symbol":"SYM","side":"Buy","refNo":0,"price":0,"volume":500,"triggerPrice":0,"orderType":"MKT","marketType":"REG","userId":"10020","actionType":"neworder","orignateSource":"W","discVolume":0,"orderProperty":111,"subClientCode":""}
+[10:29:01 AM] 
+[10:29:01 AM] ✅ Order sent successfully
+[10:29:01 AM] ⏳ Waiting for server response...
+[10:29:01 AM] 
+[10:29:01 AM] ════════════════════════════════════════════════════════════════════════════════
+[10:29:01 AM] 📨 ORDER RESPONSE RECEIVED:
+[10:29:01 AM] ────────────────────────────────────────────────────────────────────────────────
+[10:29:01 AM] Raw message body:
+[10:29:01 AM] {"userId":"10020","orderNo":"2453284","time":"10:29:01","timeMobile":"Wednesday, December 31 2025 10:29:01 AM","message":"New Buy order of 500 SYM in KSE at 15.220000267028809 for 10020 is received.","action":"Buy","market":false,"refNo":"0","status":"ACKNOWLEDGED","price":null,"quantity":null,"symbol":null,"triggerPrice":null}
+[10:29:01 AM] 
+[10:29:01 AM] Parsed message:
+[10:29:01 AM] {
+  "userId": "10020",
+  "orderNo": "2453284",
+  "time": "10:29:01",
+  "timeMobile": "Wednesday, December 31 2025 10:29:01 AM",
+  "message": "New Buy order of 500 SYM in KSE at 15.220000267028809 for 10020 is received.",
+  "action": "Buy",
+  "market": false,
+  "refNo": "0",
+  "status": "ACKNOWLEDGED",
+  "price": null,
+  "quantity": null,
+  "symbol": null,
+  "triggerPrice": null
+}
+[10:29:01 AM] ════════════════════════════════════════════════════════════════════════════════
+[10:29:01 AM] 
+[10:29:01 AM] ════════════════════════════════════════════════════════════════════════════════
+[10:29:01 AM] 📨 ORDER RESPONSE RECEIVED:
+[10:29:01 AM] ────────────────────────────────────────────────────────────────────────────────
+[10:29:01 AM] Raw message body:
+[10:29:01 AM] {"userId":"10020","clientCode":"10020","currentDate":"10:29:01","msgDate":"Wednesday, December 31 2025 10:29:01 AM","message":"Buy 500 Order Of SYM at .00 for 10020 order 2453284 is QUEUE and exchSecondaryOrderId is ","action":"Buy","orderNo":"2453284","time":"10:29:01","refNo":"0","status":"QUEUE","quantity":"500","price":".00","exchSecondaryOrderId":"","symbol":"SYM","exchangeCode":"01","orderType":"3","type":"OD","seqNo":"250289580","exchSecondaryTradeId":null}
+[10:29:01 AM] 
+[10:29:01 AM] Parsed message:
+[10:29:01 AM] {
+  "userId": "10020",
+  "clientCode": "10020",
+  "currentDate": "10:29:01",
+  "msgDate": "Wednesday, December 31 2025 10:29:01 AM",
+  "message": "Buy 500 Order Of SYM at .00 for 10020 order 2453284 is QUEUE and exchSecondaryOrderId is ",
+  "action": "Buy",
+  "orderNo": "2453284",
+  "time": "10:29:01",
+  "refNo": "0",
+  "status": "QUEUE",
+  "quantity": "500",
+  "price": ".00",
+  "exchSecondaryOrderId": "",
+  "symbol": "SYM",
+  "exchangeCode": "01",
+  "orderType": "3",
+  "type": "OD",
+  "seqNo": "250289580",
+  "exchSecondaryTradeId": null
+}
+[10:29:01 AM] ════════════════════════════════════════════════════════════════════════════════
+[10:29:01 AM] 
+[10:29:01 AM] ════════════════════════════════════════════════════════════════════════════════
+[10:29:01 AM] 📨 ORDER RESPONSE RECEIVED:
+[10:29:01 AM] ────────────────────────────────────────────────────────────────────────────────
+[10:29:01 AM] Raw message body:
+[10:29:01 AM] {"userId":"10020","clientCode":"10020","currentDate":"10:29:01","msgDate":"Wednesday, December 31 2025 10:29:01 AM","message":"TRADE 0101000000814290. Bought 500 SYM in 01 at 15.2 for 10020 order 2453284 with exchSecondaryOrderId  exchSecondaryTradeId ","action":"Buy","orderNo":"2453284","time":"10:29:01","refNo":"0","status":"ACTIVATE","quantity":"500","price":"15.2","exchSecondaryOrderId":"","symbol":"SYM","exchangeCode":"01","orderType":null,"type":"TC","exchSecondaryTradeId":""}
+[10:29:01 AM] 
+[10:29:01 AM] Parsed message:
+[10:29:01 AM] {
+  "userId": "10020",
+  "clientCode": "10020",
+  "currentDate": "10:29:01",
+  "msgDate": "Wednesday, December 31 2025 10:29:01 AM",
+  "message": "TRADE 0101000000814290. Bought 500 SYM in 01 at 15.2 for 10020 order 2453284 with exchSecondaryOrderId  exchSecondaryTradeId ",
+  "action": "Buy",
+  "orderNo": "2453284",
+  "time": "10:29:01",
+  "refNo": "0",
+  "status": "ACTIVATE",
+  "quantity": "500",
+  "price": "15.2",
+  "exchSecondaryOrderId": "",
+  "symbol": "SYM",
+  "exchangeCode": "01",
+  "orderType": null,
+  "type": "TC",
+  "exchSecondaryTradeId": ""
+}
+[10:29:01 AM] ════════════════════════════════════════════════════════════════════════════════
+[10:29:01 AM] 
+[10:29:03 AM] 🔔 F4 TRIGGERED: SYM-JAN-SYM - Major: 0.1300 >= 0.1300
+[10:29:03 AM] ┌──────────────────────────────────────────────────────────────────────────────┐
+[10:29:03 AM] │ 📤 PLACING ORDER:
+[10:29:03 AM] ├──────────────────────────────────────────────────────────────────────────────┤
+[10:29:03 AM] │ Symbol: SYM
+[10:29:03 AM] │ Side: Buy
+[10:29:03 AM] │ Type: MKT / REG
+[10:29:03 AM] │ Volume: 500
+[10:29:03 AM] │ Price: 0
+[10:29:03 AM] │ Order Property: 111
+[10:29:03 AM] ├──────────────────────────────────────────────────────────────────────────────┤
+[10:29:03 AM] │ Full payload:
+[10:29:03 AM] {
+  "clientCode": "10020",
+  "symbol": "SYM",
+  "side": "Buy",
+  "refNo": 0,
+  "price": 0,
+  "volume": 500,
+  "triggerPrice": 0,
+  "orderType": "MKT",
+  "marketType": "REG",
+  "userId": "10020",
+  "actionType": "neworder",
+  "orignateSource": "W",
+  "discVolume": 0,
+  "orderProperty": 111,
+  "subClientCode": ""
+}
+[10:29:03 AM] └──────────────────────────────────────────────────────────────────────────────┘
+[10:29:03 AM] 
+[10:29:03 AM] 📍 Destination: /app/order-service.{"clientCode":"10020","symbol":"SYM","side":"Buy","refNo":0,"price":0,"volume":500,"triggerPrice":0,"orderType":"MKT","marketType":"REG","userId":"10020","actionType":"neworder","orignateSource":"W","discVolume":0,"orderProperty":111,"subClientCode":""}
+[10:29:03 AM] 
+[10:29:03 AM] ✅ Order sent successfully
+[10:29:03 AM] ⏳ Waiting for server response...
+[10:29:03 AM] 
+[10:29:03 AM] ════════════════════════════════════════════════════════════════════════════════
+[10:29:03 AM] 📨 ORDER RESPONSE RECEIVED:
+[10:29:03 AM] ────────────────────────────────────────────────────────────────────────────────
+[10:29:03 AM] Raw message body:
+[10:29:03 AM] {"userId":"10020","orderNo":"2453285","time":"10:29:03","timeMobile":"Wednesday, December 31 2025 10:29:03 AM","message":"New Buy order of 500 SYM in KSE at 15.220000267028809 for 10020 is received.","action":"Buy","market":false,"refNo":"0","status":"ACKNOWLEDGED","price":null,"quantity":null,"symbol":null,"triggerPrice":null}
+[10:29:03 AM] 
+[10:29:03 AM] Parsed message:
+[10:29:03 AM] {
+  "userId": "10020",
+  "orderNo": "2453285",
+  "time": "10:29:03",
+  "timeMobile": "Wednesday, December 31 2025 10:29:03 AM",
+  "message": "New Buy order of 500 SYM in KSE at 15.220000267028809 for 10020 is received.",
+  "action": "Buy",
+  "market": false,
+  "refNo": "0",
+  "status": "ACKNOWLEDGED",
+  "price": null,
+  "quantity": null,
+  "symbol": null,
+  "triggerPrice": null
+}
+[10:29:03 AM] ════════════════════════════════════════════════════════════════════════════════
+[10:29:03 AM] 
+[10:29:03 AM] ════════════════════════════════════════════════════════════════════════════════
+[10:29:03 AM] 📨 ORDER RESPONSE RECEIVED:
+[10:29:03 AM] ────────────────────────────────────────────────────────────────────────────────
+[10:29:03 AM] Raw message body:
+[10:29:03 AM] {"userId":"10020","clientCode":"10020","currentDate":"10:29:03","msgDate":"Wednesday, December 31 2025 10:29:03 AM","message":"Buy 500 Order Of SYM at .00 for 10020 order 2453285 is QUEUE and exchSecondaryOrderId is ","action":"Buy","orderNo":"2453285","time":"10:29:03","refNo":"0","status":"QUEUE","quantity":"500","price":".00","exchSecondaryOrderId":"","symbol":"SYM","exchangeCode":"01","orderType":"3","type":"OD","seqNo":"250289581","exchSecondaryTradeId":null}
+[10:29:03 AM] 
+[10:29:03 AM] Parsed message:
+[10:29:03 AM] {
+  "userId": "10020",
+  "clientCode": "10020",
+  "currentDate": "10:29:03",
+  "msgDate": "Wednesday, December 31 2025 10:29:03 AM",
+  "message": "Buy 500 Order Of SYM at .00 for 10020 order 2453285 is QUEUE and exchSecondaryOrderId is ",
+  "action": "Buy",
+  "orderNo": "2453285",
+  "time": "10:29:03",
+  "refNo": "0",
+  "status": "QUEUE",
+  "quantity": "500",
+  "price": ".00",
+  "exchSecondaryOrderId": "",
+  "symbol": "SYM",
+  "exchangeCode": "01",
+  "orderType": "3",
+  "type": "OD",
+  "seqNo": "250289581",
+  "exchSecondaryTradeId": null
+}
+[10:29:03 AM] ════════════════════════════════════════════════════════════════════════════════
+[10:29:03 AM] 
+[10:29:03 AM] ════════════════════════════════════════════════════════════════════════════════
+[10:29:03 AM] 📨 ORDER RESPONSE RECEIVED:
+[10:29:03 AM] ────────────────────────────────────────────────────────────────────────────────
+[10:29:03 AM] Raw message body:
+[10:29:03 AM] {"userId":"10020","clientCode":"10020","currentDate":"10:29:03","msgDate":"Wednesday, December 31 2025 10:29:03 AM","message":"TRADE 0101000000814654. Bought 500 SYM in 01 at 15.2 for 10020 order 2453285 with exchSecondaryOrderId  exchSecondaryTradeId ","action":"Buy","orderNo":"2453285","time":"10:29:03","refNo":"0","status":"ACTIVATE","quantity":"500","price":"15.2","exchSecondaryOrderId":"","symbol":"SYM","exchangeCode":"01","orderType":null,"type":"TC","exchSecondaryTradeId":""}
+[10:29:03 AM] 
+[10:29:03 AM] Parsed message:
+[10:29:03 AM] {
+  "userId": "10020",
+  "clientCode": "10020",
+  "currentDate": "10:29:03",
+  "msgDate": "Wednesday, December 31 2025 10:29:03 AM",
+  "message": "TRADE 0101000000814654. Bought 500 SYM in 01 at 15.2 for 10020 order 2453285 with exchSecondaryOrderId  exchSecondaryTradeId ",
+  "action": "Buy",
+  "orderNo": "2453285",
+  "time": "10:29:03",
+  "refNo": "0",
+  "status": "ACTIVATE",
+  "quantity": "500",
+  "price": "15.2",
+  "exchSecondaryOrderId": "",
+  "symbol": "SYM",
+  "exchangeCode": "01",
+  "orderType": null,
+  "type": "TC",
+  "exchSecondaryTradeId": ""
+}
+[10:29:03 AM] ════════════════════════════════════════════════════════════════════════════════
+[10:29:03 AM] 
+[10:29:35 AM] 🔔 F4 TRIGGERED: SYM-JAN-SYM - Major: 0.1300 >= 0.1300
+[10:29:35 AM] ┌──────────────────────────────────────────────────────────────────────────────┐
+[10:29:35 AM] │ 📤 PLACING ORDER:
+[10:29:35 AM] ├──────────────────────────────────────────────────────────────────────────────┤
+[10:29:35 AM] │ Symbol: SYM
+[10:29:35 AM] │ Side: Buy
+[10:29:35 AM] │ Type: MKT / REG
+[10:29:35 AM] │ Volume: 500
+[10:29:35 AM] │ Price: 0
+[10:29:35 AM] │ Order Property: 111
+[10:29:35 AM] ├──────────────────────────────────────────────────────────────────────────────┤
+[10:29:35 AM] │ Full payload:
+[10:29:35 AM] {
+  "clientCode": "10020",
+  "symbol": "SYM",
+  "side": "Buy",
+  "refNo": 0,
+  "price": 0,
+  "volume": 500,
+  "triggerPrice": 0,
+  "orderType": "MKT",
+  "marketType": "REG",
+  "userId": "10020",
+  "actionType": "neworder",
+  "orignateSource": "W",
+  "discVolume": 0,
+  "orderProperty": 111,
+  "subClientCode": ""
+}
+[10:29:35 AM] └──────────────────────────────────────────────────────────────────────────────┘
+[10:29:35 AM] 
+[10:29:35 AM] 📍 Destination: /app/order-service.{"clientCode":"10020","symbol":"SYM","side":"Buy","refNo":0,"price":0,"volume":500,"triggerPrice":0,"orderType":"MKT","marketType":"REG","userId":"10020","actionType":"neworder","orignateSource":"W","discVolume":0,"orderProperty":111,"subClientCode":""}
+[10:29:35 AM] 
+[10:29:35 AM] ✅ Order sent successfully
+[10:29:35 AM] ⏳ Waiting for server response...
+[10:29:35 AM] 
+[10:29:36 AM] ════════════════════════════════════════════════════════════════════════════════
+[10:29:36 AM] 📨 ORDER RESPONSE RECEIVED:
+[10:29:36 AM] ────────────────────────────────────────────────────────────────────────────────
+[10:29:36 AM] Raw message body:
+[10:29:36 AM] {"userId":"10020","orderNo":null,"time":"10:29:35","timeMobile":"Wednesday, December 31 2025 10:29:35 AM","message":"INVALID ORDER! 10020 free cash is not sufficiant for this order, client cash after order execution will be -3656.84","action":"Buy","market":false,"refNo":null,"status":null,"price":null,"quantity":null,"symbol":null,"triggerPrice":null}
+[10:29:36 AM] 
+[10:29:36 AM] Parsed message:
+[10:29:36 AM] {
+  "userId": "10020",
+  "orderNo": null,
+  "time": "10:29:35",
+  "timeMobile": "Wednesday, December 31 2025 10:29:35 AM",
+  "message": "INVALID ORDER! 10020 free cash is not sufficiant for this order, client cash after order execution will be -3656.84",
+  "action": "Buy",
+  "market": false,
+  "refNo": null,
+  "status": null,
+  "price": null,
+  "quantity": null,
+  "symbol": null,
+  "triggerPrice": null
+}
+[10:29:36 AM] ════════════════════════════════════════════════════════════════════════════════
+[10:29:36 AM] 
+[10:29:37 AM] 🔔 F4 TRIGGERED: SYM-JAN-SYM - Major: 0.1400 >= 0.1300
+[10:29:37 AM] ┌──────────────────────────────────────────────────────────────────────────────┐
+[10:29:37 AM] │ 📤 PLACING ORDER:
+[10:29:37 AM] ├──────────────────────────────────────────────────────────────────────────────┤
+[10:29:37 AM] │ Symbol: SYM
+[10:29:37 AM] │ Side: Buy
+[10:29:37 AM] │ Type: MKT / REG
+[10:29:37 AM] │ Volume: 500
+[10:29:37 AM] │ Price: 0
+[10:29:37 AM] │ Order Property: 111
+[10:29:37 AM] ├──────────────────────────────────────────────────────────────────────────────┤
+[10:29:37 AM] │ Full payload:
+[10:29:37 AM] {
+  "clientCode": "10020",
+  "symbol": "SYM",
+  "side": "Buy",
+  "refNo": 0,
+  "price": 0,
+  "volume": 500,
+  "triggerPrice": 0,
+  "orderType": "MKT",
+  "marketType": "REG",
+  "userId": "10020",
+  "actionType": "neworder",
+  "orignateSource": "W",
+  "discVolume": 0,
+  "orderProperty": 111,
+  "subClientCode": ""
+}
+[10:29:37 AM] └──────────────────────────────────────────────────────────────────────────────┘
+[10:29:37 AM] 
+[10:29:37 AM] 📍 Destination: /app/order-service.{"clientCode":"10020","symbol":"SYM","side":"Buy","refNo":0,"price":0,"volume":500,"triggerPrice":0,"orderType":"MKT","marketType":"REG","userId":"10020","actionType":"neworder","orignateSource":"W","discVolume":0,"orderProperty":111,"subClientCode":""}
+[10:29:37 AM] 
+[10:29:37 AM] ✅ Order sent successfully
+[10:29:37 AM] ⏳ Waiting for server response...
+[10:29:37 AM] 
+[10:29:38 AM] ════════════════════════════════════════════════════════════════════════════════
+[10:29:38 AM] 📨 ORDER RESPONSE RECEIVED:
+[10:29:38 AM] ────────────────────────────────────────────────────────────────────────────────
+[10:29:38 AM] Raw message body:
+[10:29:38 AM] {"userId":"10020","orderNo":null,"time":"10:29:37","timeMobile":"Wednesday, December 31 2025 10:29:37 AM","message":"INVALID ORDER! 10020 free cash is not sufficiant for this order, client cash after order execution will be -3656.84","action":"Buy","market":false,"refNo":null,"status":null,"price":null,"quantity":null,"symbol":null,"triggerPrice":null}
+[10:29:38 AM] 
+[10:29:38 AM] Parsed message:
+[10:29:38 AM] {
+  "userId": "10020",
+  "orderNo": null,
+  "time": "10:29:37",
+  "timeMobile": "Wednesday, December 31 2025 10:29:37 AM",
+  "message": "INVALID ORDER! 10020 free cash is not sufficiant for this order, client cash after order execution will be -3656.84",
+  "action": "Buy",
+  "market": false,
+  "refNo": null,
+  "status": null,
+  "price": null,
+  "quantity": null,
+  "symbol": null,
+  "triggerPrice": null
+}
+[10:29:38 AM] ════════════════════════════════════════════════════════════════════════════════
+[10:29:38 AM] 
+[10:29:39 AM] 🔔 F4 TRIGGERED: SYM-JAN-SYM - Major: 0.1400 >= 0.1300
+[10:29:39 AM] ┌──────────────────────────────────────────────────────────────────────────────┐
+[10:29:39 AM] │ 📤 PLACING ORDER:
+[10:29:39 AM] ├──────────────────────────────────────────────────────────────────────────────┤
+[10:29:39 AM] │ Symbol: SYM
+[10:29:39 AM] │ Side: Buy
+[10:29:39 AM] │ Type: MKT / REG
+[10:29:39 AM] │ Volume: 500
+[10:29:39 AM] │ Price: 0
+[10:29:39 AM] │ Order Property: 111
+[10:29:39 AM] ├──────────────────────────────────────────────────────────────────────────────┤
+[10:29:39 AM] │ Full payload:
+[10:29:39 AM] {
+  "clientCode": "10020",
+  "symbol": "SYM",
+  "side": "Buy",
+  "refNo": 0,
+  "price": 0,
+  "volume": 500,
+  "triggerPrice": 0,
+  "orderType": "MKT",
+  "marketType": "REG",
+  "userId": "10020",
+  "actionType": "neworder",
+  "orignateSource": "W",
+  "discVolume": 0,
+  "orderProperty": 111,
+  "subClientCode": ""
+}
+[10:29:39 AM] └──────────────────────────────────────────────────────────────────────────────┘
+[10:29:39 AM] 
+[10:29:39 AM] 📍 Destination: /app/order-service.{"clientCode":"10020","symbol":"SYM","side":"Buy","refNo":0,"price":0,"volume":500,"triggerPrice":0,"orderType":"MKT","marketType":"REG","userId":"10020","actionType":"neworder","orignateSource":"W","discVolume":0,"orderProperty":111,"subClientCode":""}
+[10:29:39 AM] 
+[10:29:39 AM] ✅ Order sent successfully
+[10:29:39 AM] ⏳ Waiting for server response...
+[10:29:39 AM] 
+[10:29:40 AM] ════════════════════════════════════════════════════════════════════════════════
+[10:29:40 AM] 📨 ORDER RESPONSE RECEIVED:
+[10:29:40 AM] ────────────────────────────────────────────────────────────────────────────────
+[10:29:40 AM] Raw message body:
+[10:29:40 AM] {"userId":"10020","orderNo":null,"time":"10:29:39","timeMobile":"Wednesday, December 31 2025 10:29:39 AM","message":"INVALID ORDER! 10020 free cash is not sufficiant for this order, client cash after order execution will be -3656.84","action":"Buy","market":false,"refNo":null,"status":null,"price":null,"quantity":null,"symbol":null,"triggerPrice":null}
+[10:29:40 AM] 
+[10:29:40 AM] Parsed message:
+[10:29:40 AM] {
+  "userId": "10020",
+  "orderNo": null,
+  "time": "10:29:39",
+  "timeMobile": "Wednesday, December 31 2025 10:29:39 AM",
+  "message": "INVALID ORDER! 10020 free cash is not sufficiant for this order, client cash after order execution will be -3656.84",
+  "action": "Buy",
+  "market": false,
+  "refNo": null,
+  "status": null,
+  "price": null,
+  "quantity": null,
+  "symbol": null,
+  "triggerPrice": null
+}
+[10:29:40 AM] ════════════════════════════════════════════════════════════════════════════════
+[10:29:40 AM] 
+[10:29:41 AM] 🔔 F4 TRIGGERED: SYM-JAN-SYM - Major: 0.1400 >= 0.1300
+[10:29:41 AM] ┌──────────────────────────────────────────────────────────────────────────────┐
+[10:29:41 AM] │ 📤 PLACING ORDER:
+[10:29:41 AM] ├──────────────────────────────────────────────────────────────────────────────┤
+[10:29:41 AM] │ Symbol: SYM
+[10:29:41 AM] │ Side: Buy
+[10:29:41 AM] │ Type: MKT / REG
+[10:29:41 AM] │ Volume: 500
+[10:29:41 AM] │ Price: 0
+[10:29:41 AM] │ Order Property: 111
+[10:29:41 AM] ├──────────────────────────────────────────────────────────────────────────────┤
+[10:29:41 AM] │ Full payload:
+[10:29:41 AM] {
+  "clientCode": "10020",
+  "symbol": "SYM",
+  "side": "Buy",
+  "refNo": 0,
+  "price": 0,
+  "volume": 500,
+  "triggerPrice": 0,
+  "orderType": "MKT",
+  "marketType": "REG",
+  "userId": "10020",
+  "actionType": "neworder",
+  "orignateSource": "W",
+  "discVolume": 0,
+  "orderProperty": 111,
+  "subClientCode": ""
+}
+[10:29:41 AM] └──────────────────────────────────────────────────────────────────────────────┘
+[10:29:41 AM] 
+[10:29:41 AM] 📍 Destination: /app/order-service.{"clientCode":"10020","symbol":"SYM","side":"Buy","refNo":0,"price":0,"volume":500,"triggerPrice":0,"orderType":"MKT","marketType":"REG","userId":"10020","actionType":"neworder","orignateSource":"W","discVolume":0,"orderProperty":111,"subClientCode":""}
+[10:29:41 AM] 
+[10:29:41 AM] ✅ Order sent successfully
+[10:29:41 AM] ⏳ Waiting for server response...
+[10:29:41 AM] 
+[10:29:42 AM] ════════════════════════════════════════════════════════════════════════════════
+[10:29:42 AM] 📨 ORDER RESPONSE RECEIVED:
+[10:29:42 AM] ────────────────────────────────────────────────────────────────────────────────
+[10:29:42 AM] Raw message body:
+[10:29:42 AM] {"userId":"10020","orderNo":null,"time":"10:29:41","timeMobile":"Wednesday, December 31 2025 10:29:41 AM","message":"INVALID ORDER! 10020 free cash is not sufficiant for this order, client cash after order execution will be -3651.84","action":"Buy","market":false,"refNo":null,"status":null,"price":null,"quantity":null,"symbol":null,"triggerPrice":null}
+[10:29:42 AM] 
+[10:29:42 AM] Parsed message:
+[10:29:42 AM] {
+  "userId": "10020",
+  "orderNo": null,
+  "time": "10:29:41",
+  "timeMobile": "Wednesday, December 31 2025 10:29:41 AM",
+  "message": "INVALID ORDER! 10020 free cash is not sufficiant for this order, client cash after order execution will be -3651.84",
+  "action": "Buy",
+  "market": false,
+  "refNo": null,
+  "status": null,
+  "price": null,
+  "quantity": null,
+  "symbol": null,
+  "triggerPrice": null
+}
+[10:29:42 AM] ════════════════════════════════════════════════════════════════════════════════
+[10:29:42 AM] 
+[10:29:42 AM] 🛑 Disconnecting Order WebSocket...
+[10:29:42 AM] ✅ Order WebSocket disconnected
