@@ -27,8 +27,8 @@ ws.on('open', () => {
         symbols: symbols
     };
     
-    console.log('📤 Sending subscription request:', JSON.stringify(subscribeMessage));
-    ws.send(JSON.stringify(subscribeMessage));
+    // console.log('📤 Sending subscription request:', JSON.stringify(subscribeMessage));
+    // ws.send(JSON.stringify(subscribeMessage));
     
     console.log('📊 Listening for messages...');
     console.log('');
