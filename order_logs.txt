@@ -1,18 +1,828 @@
-=== Order Execution Logs - Session Started: 1/1/2026, 11:14:58 AM ===
+=== Order Execution Logs - Session Started: 1/22/2026, 10:52:21 AM ===
 
-[11:14:58 AM] 🔄 Connecting to Order WebSocket...
-[11:14:58 AM] 📡 URL: https://trade.iel.net.pk:1219/order-dispatch-websocket
-[11:14:58 AM] 🔑 Auth ID: 10020
-[11:14:58 AM] 
-[11:14:59 AM] ✅ Connected to Order WebSocket via STOMP
-[11:14:59 AM] 📊 Frame: {"command":"CONNECTED","headers":{"user-name":"10020","heart-beat":"0,0","version":"1.1"},"body":""}
-[11:14:59 AM] 📊 Ready to place orders...
-[11:14:59 AM] 
-[11:14:59 AM] 📤 Sending login details to /app/order-service/login-details
-[11:14:59 AM]    Login ID: 10020
-[11:14:59 AM] 
-[11:14:59 AM] 📡 Subscribing to: /user/10020/order-service.notify
-[11:14:59 AM] 
-[11:14:59 AM] ✅ Subscription established successfully
-[11:14:59 AM] 
-[11:14:59 AM] ✅ Order API WebSocket ready for order execution
+[10:52:21 AM] 🔄 Connecting to Order WebSocket...
+[10:52:21 AM] 📡 URL: https://trade.iel.net.pk:1219/order-dispatch-websocket
+[10:52:21 AM] 🔑 Auth ID: IPP2
+[10:52:21 AM] 
+[10:52:21 AM] ✅ Connected to Order WebSocket via STOMP
+[10:52:21 AM] 📊 Frame: {"command":"CONNECTED","headers":{"user-name":"IPP2","heart-beat":"0,0","version":"1.1"},"body":""}
+[10:52:21 AM] 📊 Ready to place orders...
+[10:52:21 AM] 
+[10:52:21 AM] 📤 Sending login details to /app/order-service/login-details
+[10:52:21 AM]    Login ID: IPP2
+[10:52:21 AM] 
+[10:52:21 AM] 📡 Subscribing to: /user/IPP2/order-service.notify
+[10:52:21 AM] 
+[10:52:21 AM] ✅ Subscription established successfully
+[10:52:21 AM] 
+[10:52:21 AM] ✅ Order API WebSocket ready for order execution
+[10:53:18 AM] 🔔 F4 TRIGGERED: NPL-JAN-NPL - Major: 0.3800 >= 0.3000
+[10:53:18 AM] ┌──────────────────────────────────────────────────────────────────────────────┐
+[10:53:18 AM] │ 📤 PLACING ORDER:
+[10:53:18 AM] ├──────────────────────────────────────────────────────────────────────────────┤
+[10:53:18 AM] │ Symbol: NPL
+[10:53:18 AM] │ Side: Buy
+[10:53:18 AM] │ Type: MKT / REG
+[10:53:18 AM] │ Volume: 500
+[10:53:18 AM] │ Price: 0
+[10:53:18 AM] │ Order Property: 111
+[10:53:18 AM] ├──────────────────────────────────────────────────────────────────────────────┤
+[10:53:18 AM] │ Full payload:
+[10:53:18 AM] {
+  "clientCode": "IPP2",
+  "symbol": "NPL",
+  "side": "Buy",
+  "refNo": 0,
+  "price": 0,
+  "volume": 500,
+  "triggerPrice": 0,
+  "orderType": "MKT",
+  "marketType": "REG",
+  "userId": "IPP2",
+  "actionType": "neworder",
+  "orignateSource": "W",
+  "discVolume": 0,
+  "orderProperty": 111,
+  "subClientCode": ""
+}
+[10:53:18 AM] └──────────────────────────────────────────────────────────────────────────────┘
+[10:53:18 AM] 
+[10:53:18 AM] 📍 Destination: /app/order-service.{"clientCode":"IPP2","symbol":"NPL","side":"Buy","refNo":0,"price":0,"volume":500,"triggerPrice":0,"orderType":"MKT","marketType":"REG","userId":"IPP2","actionType":"neworder","orignateSource":"W","discVolume":0,"orderProperty":111,"subClientCode":""}
+[10:53:18 AM] 
+[10:53:18 AM] ✅ Order sent successfully
+[10:53:18 AM] ⏳ Waiting for server response...
+[10:53:18 AM] 
+[10:53:19 AM] ════════════════════════════════════════════════════════════════════════════════
+[10:53:19 AM] 📨 ORDER RESPONSE RECEIVED:
+[10:53:19 AM] ────────────────────────────────────────────────────────────────────────────────
+[10:53:19 AM] Raw message body:
+[10:53:19 AM] {"userId":"IPP2","orderNo":"2581555","time":"10:53:19","timeMobile":"Thursday, January 22 2026 10:53:19 AM","message":"New Buy order of 500 NPL in KSE at 87.73999786376953 for IPP2 is received.","action":"Buy","market":false,"refNo":"0","status":"ACKNOWLEDGED","price":null,"quantity":null,"symbol":null,"triggerPrice":null}
+[10:53:19 AM] 
+[10:53:19 AM] Parsed message:
+[10:53:19 AM] {
+  "userId": "IPP2",
+  "orderNo": "2581555",
+  "time": "10:53:19",
+  "timeMobile": "Thursday, January 22 2026 10:53:19 AM",
+  "message": "New Buy order of 500 NPL in KSE at 87.73999786376953 for IPP2 is received.",
+  "action": "Buy",
+  "market": false,
+  "refNo": "0",
+  "status": "ACKNOWLEDGED",
+  "price": null,
+  "quantity": null,
+  "symbol": null,
+  "triggerPrice": null
+}
+[10:53:19 AM] ════════════════════════════════════════════════════════════════════════════════
+[10:53:19 AM] 
+[10:53:19 AM] ════════════════════════════════════════════════════════════════════════════════
+[10:53:19 AM] 📨 ORDER RESPONSE RECEIVED:
+[10:53:19 AM] ────────────────────────────────────────────────────────────────────────────────
+[10:53:19 AM] Raw message body:
+[10:53:19 AM] {"userId":"IPP2","clientCode":"IPP2","currentDate":"10:53:19","msgDate":"Thursday, January 22 2026 10:53:19 AM","message":"Buy 500 Order Of NPL at .00 for IPP2 order 2581555 is QUEUE and exchSecondaryOrderId is ","action":"Buy","orderNo":"2581555","time":"10:53:19","refNo":"0","status":"QUEUE","quantity":"500","price":".00","exchSecondaryOrderId":"","symbol":"NPL","exchangeCode":"01","orderType":"3","type":"OD","seqNo":"250289824","exchSecondaryTradeId":null}
+[10:53:19 AM] 
+[10:53:19 AM] Parsed message:
+[10:53:19 AM] {
+  "userId": "IPP2",
+  "clientCode": "IPP2",
+  "currentDate": "10:53:19",
+  "msgDate": "Thursday, January 22 2026 10:53:19 AM",
+  "message": "Buy 500 Order Of NPL at .00 for IPP2 order 2581555 is QUEUE and exchSecondaryOrderId is ",
+  "action": "Buy",
+  "orderNo": "2581555",
+  "time": "10:53:19",
+  "refNo": "0",
+  "status": "QUEUE",
+  "quantity": "500",
+  "price": ".00",
+  "exchSecondaryOrderId": "",
+  "symbol": "NPL",
+  "exchangeCode": "01",
+  "orderType": "3",
+  "type": "OD",
+  "seqNo": "250289824",
+  "exchSecondaryTradeId": null
+}
+[10:53:19 AM] ════════════════════════════════════════════════════════════════════════════════
+[10:53:19 AM] 
+[10:53:19 AM] ════════════════════════════════════════════════════════════════════════════════
+[10:53:19 AM] 📨 ORDER RESPONSE RECEIVED:
+[10:53:19 AM] ────────────────────────────────────────────────────────────────────────────────
+[10:53:19 AM] Raw message body:
+[10:53:19 AM] {"userId":"IPP2","clientCode":"IPP2","currentDate":"10:53:19","msgDate":"Thursday, January 22 2026 10:53:19 AM","message":"TRADE 0101000001370404. Bought 395 NPL in 01 at 87.7 for IPP2 order 2581555 with exchSecondaryOrderId  exchSecondaryTradeId ","action":"Buy","orderNo":"2581555","time":"10:53:19","refNo":"0","status":"ACTIVATE","quantity":"395","price":"87.7","exchSecondaryOrderId":"","symbol":"NPL","exchangeCode":"01","orderType":null,"type":"TC","exchSecondaryTradeId":""}
+[10:53:19 AM] 
+[10:53:19 AM] Parsed message:
+[10:53:19 AM] {
+  "userId": "IPP2",
+  "clientCode": "IPP2",
+  "currentDate": "10:53:19",
+  "msgDate": "Thursday, January 22 2026 10:53:19 AM",
+  "message": "TRADE 0101000001370404. Bought 395 NPL in 01 at 87.7 for IPP2 order 2581555 with exchSecondaryOrderId  exchSecondaryTradeId ",
+  "action": "Buy",
+  "orderNo": "2581555",
+  "time": "10:53:19",
+  "refNo": "0",
+  "status": "ACTIVATE",
+  "quantity": "395",
+  "price": "87.7",
+  "exchSecondaryOrderId": "",
+  "symbol": "NPL",
+  "exchangeCode": "01",
+  "orderType": null,
+  "type": "TC",
+  "exchSecondaryTradeId": ""
+}
+[10:53:19 AM] ════════════════════════════════════════════════════════════════════════════════
+[10:53:19 AM] 
+[10:53:19 AM] ════════════════════════════════════════════════════════════════════════════════
+[10:53:19 AM] 📨 ORDER RESPONSE RECEIVED:
+[10:53:19 AM] ────────────────────────────────────────────────────────────────────────────────
+[10:53:19 AM] Raw message body:
+[10:53:19 AM] {"userId":"IPP2","clientCode":"IPP2","currentDate":"10:53:19","msgDate":"Thursday, January 22 2026 10:53:19 AM","message":"TRADE 0101000001370402. Bought 105 NPL in 01 at 87.63 for IPP2 order 2581555 with exchSecondaryOrderId  exchSecondaryTradeId ","action":"Buy","orderNo":"2581555","time":"10:53:19","refNo":"0","status":"ACTIVATE","quantity":"105","price":"87.63","exchSecondaryOrderId":"","symbol":"NPL","exchangeCode":"01","orderType":null,"type":"TC","exchSecondaryTradeId":""}
+[10:53:19 AM] 
+[10:53:19 AM] Parsed message:
+[10:53:19 AM] {
+  "userId": "IPP2",
+  "clientCode": "IPP2",
+  "currentDate": "10:53:19",
+  "msgDate": "Thursday, January 22 2026 10:53:19 AM",
+  "message": "TRADE 0101000001370402. Bought 105 NPL in 01 at 87.63 for IPP2 order 2581555 with exchSecondaryOrderId  exchSecondaryTradeId ",
+  "action": "Buy",
+  "orderNo": "2581555",
+  "time": "10:53:19",
+  "refNo": "0",
+  "status": "ACTIVATE",
+  "quantity": "105",
+  "price": "87.63",
+  "exchSecondaryOrderId": "",
+  "symbol": "NPL",
+  "exchangeCode": "01",
+  "orderType": null,
+  "type": "TC",
+  "exchSecondaryTradeId": ""
+}
+[10:53:19 AM] ════════════════════════════════════════════════════════════════════════════════
+[10:53:19 AM] 
+[10:53:19 AM] ┌──────────────────────────────────────────────────────────────────────────────┐
+[10:53:19 AM] │ 📤 PLACING ORDER:
+[10:53:19 AM] ├──────────────────────────────────────────────────────────────────────────────┤
+[10:53:19 AM] │ Symbol: NPL-JAN
+[10:53:19 AM] │ Side: Buy
+[10:53:19 AM] │ Type: SHS / FUT
+[10:53:19 AM] │ Volume: 500
+[10:53:19 AM] │ Price: 88.01
+[10:53:19 AM] │ Order Property: 111
+[10:53:19 AM] ├──────────────────────────────────────────────────────────────────────────────┤
+[10:53:19 AM] │ Full payload:
+[10:53:19 AM] {
+  "clientCode": "IPP2",
+  "symbol": "NPL-JAN",
+  "side": "Buy",
+  "refNo": 0,
+  "price": 88.01,
+  "volume": 500,
+  "triggerPrice": 0,
+  "orderType": "SHS",
+  "marketType": "FUT",
+  "userId": "IPP2",
+  "actionType": "neworder",
+  "orignateSource": "W",
+  "discVolume": 0,
+  "orderProperty": 111,
+  "subClientCode": ""
+}
+[10:53:19 AM] └──────────────────────────────────────────────────────────────────────────────┘
+[10:53:19 AM] 
+[10:53:19 AM] 📍 Destination: /app/order-service.{"clientCode":"IPP2","symbol":"NPL-JAN","side":"Buy","refNo":0,"price":88.01,"volume":500,"triggerPrice":0,"orderType":"SHS","marketType":"FUT","userId":"IPP2","actionType":"neworder","orignateSource":"W","discVolume":0,"orderProperty":111,"subClientCode":""}
+[10:53:19 AM] 
+[10:53:19 AM] ✅ Order sent successfully
+[10:53:19 AM] ⏳ Waiting for server response...
+[10:53:19 AM] 
+[10:53:19 AM] ✅ F4: BUY NPL (500@REG) + SHORT SELL NPL-JAN (500@FUT@88.01)
+[10:53:19 AM] ════════════════════════════════════════════════════════════════════════════════
+[10:53:19 AM] 📨 ORDER RESPONSE RECEIVED:
+[10:53:19 AM] ────────────────────────────────────────────────────────────────────────────────
+[10:53:19 AM] Raw message body:
+[10:53:19 AM] {"userId":"IPP2","orderNo":"2581556","time":"10:53:19","timeMobile":"Thursday, January 22 2026 10:53:19 AM","message":"New SHORT SELL order of 500 NPL-JAN in KSE at 88.01 for IPP2 is received.","action":"Buy","market":false,"refNo":"0","status":"ACKNOWLEDGED","price":null,"quantity":null,"symbol":null,"triggerPrice":null}
+[10:53:19 AM] 
+[10:53:19 AM] Parsed message:
+[10:53:19 AM] {
+  "userId": "IPP2",
+  "orderNo": "2581556",
+  "time": "10:53:19",
+  "timeMobile": "Thursday, January 22 2026 10:53:19 AM",
+  "message": "New SHORT SELL order of 500 NPL-JAN in KSE at 88.01 for IPP2 is received.",
+  "action": "Buy",
+  "market": false,
+  "refNo": "0",
+  "status": "ACKNOWLEDGED",
+  "price": null,
+  "quantity": null,
+  "symbol": null,
+  "triggerPrice": null
+}
+[10:53:19 AM] ════════════════════════════════════════════════════════════════════════════════
+[10:53:19 AM] 
+[10:53:20 AM] ════════════════════════════════════════════════════════════════════════════════
+[10:53:20 AM] 📨 ORDER RESPONSE RECEIVED:
+[10:53:20 AM] ────────────────────────────────────────────────────────────────────────────────
+[10:53:20 AM] Raw message body:
+[10:53:20 AM] {"userId":"IPP2","clientCode":"IPP2","currentDate":"10:53:20","msgDate":"Thursday, January 22 2026 10:53:20 AM","message":"Sell 500 Order Of NPL-JAN at 88.01 for IPP2 order 2581556 is QUEUE and exchSecondaryOrderId is ","action":"Sell","orderNo":"2581556","time":"10:53:20","refNo":"0","status":"QUEUE","quantity":"500","price":"88.01","exchSecondaryOrderId":"","symbol":"NPL-JAN","exchangeCode":"01","orderType":"8","type":"OD","seqNo":"250289825","exchSecondaryTradeId":null}
+[10:53:20 AM] 
+[10:53:20 AM] Parsed message:
+[10:53:20 AM] {
+  "userId": "IPP2",
+  "clientCode": "IPP2",
+  "currentDate": "10:53:20",
+  "msgDate": "Thursday, January 22 2026 10:53:20 AM",
+  "message": "Sell 500 Order Of NPL-JAN at 88.01 for IPP2 order 2581556 is QUEUE and exchSecondaryOrderId is ",
+  "action": "Sell",
+  "orderNo": "2581556",
+  "time": "10:53:20",
+  "refNo": "0",
+  "status": "QUEUE",
+  "quantity": "500",
+  "price": "88.01",
+  "exchSecondaryOrderId": "",
+  "symbol": "NPL-JAN",
+  "exchangeCode": "01",
+  "orderType": "8",
+  "type": "OD",
+  "seqNo": "250289825",
+  "exchSecondaryTradeId": null
+}
+[10:53:20 AM] ════════════════════════════════════════════════════════════════════════════════
+[10:53:20 AM] 
+[10:53:20 AM] ════════════════════════════════════════════════════════════════════════════════
+[10:53:20 AM] 📨 ORDER RESPONSE RECEIVED:
+[10:53:20 AM] ────────────────────────────────────────────────────────────────────────────────
+[10:53:20 AM] Raw message body:
+[10:53:20 AM] {"userId":"IPP2","clientCode":"IPP2","currentDate":"10:53:20","msgDate":"Thursday, January 22 2026 10:53:20 AM","message":"TRADE 0101000001370572. Sold 500 NPL-JAN in 01 at 88.01 for IPP2 order 2581556 with exchSecondaryOrderId  exchSecondaryTradeId ","action":"Sell","orderNo":"2581556","time":"10:53:20","refNo":"0","status":"ACTIVATE","quantity":"500","price":"88.01","exchSecondaryOrderId":"","symbol":"NPL-JAN","exchangeCode":"01","orderType":null,"type":"TC","exchSecondaryTradeId":""}
+[10:53:20 AM] 
+[10:53:20 AM] Parsed message:
+[10:53:20 AM] {
+  "userId": "IPP2",
+  "clientCode": "IPP2",
+  "currentDate": "10:53:20",
+  "msgDate": "Thursday, January 22 2026 10:53:20 AM",
+  "message": "TRADE 0101000001370572. Sold 500 NPL-JAN in 01 at 88.01 for IPP2 order 2581556 with exchSecondaryOrderId  exchSecondaryTradeId ",
+  "action": "Sell",
+  "orderNo": "2581556",
+  "time": "10:53:20",
+  "refNo": "0",
+  "status": "ACTIVATE",
+  "quantity": "500",
+  "price": "88.01",
+  "exchSecondaryOrderId": "",
+  "symbol": "NPL-JAN",
+  "exchangeCode": "01",
+  "orderType": null,
+  "type": "TC",
+  "exchSecondaryTradeId": ""
+}
+[10:53:20 AM] ════════════════════════════════════════════════════════════════════════════════
+[10:53:20 AM] 
+[11:00:37 AM] 🔔 F4 TRIGGERED: NPL-JAN-NPL - Major: 0.3000 >= 0.3000
+[11:00:37 AM] ┌──────────────────────────────────────────────────────────────────────────────┐
+[11:00:37 AM] │ 📤 PLACING ORDER:
+[11:00:37 AM] ├──────────────────────────────────────────────────────────────────────────────┤
+[11:00:37 AM] │ Symbol: NPL
+[11:00:37 AM] │ Side: Buy
+[11:00:37 AM] │ Type: MKT / REG
+[11:00:37 AM] │ Volume: 500
+[11:00:37 AM] │ Price: 0
+[11:00:37 AM] │ Order Property: 111
+[11:00:37 AM] ├──────────────────────────────────────────────────────────────────────────────┤
+[11:00:37 AM] │ Full payload:
+[11:00:37 AM] {
+  "clientCode": "IPP2",
+  "symbol": "NPL",
+  "side": "Buy",
+  "refNo": 0,
+  "price": 0,
+  "volume": 500,
+  "triggerPrice": 0,
+  "orderType": "MKT",
+  "marketType": "REG",
+  "userId": "IPP2",
+  "actionType": "neworder",
+  "orignateSource": "W",
+  "discVolume": 0,
+  "orderProperty": 111,
+  "subClientCode": ""
+}
+[11:00:37 AM] └──────────────────────────────────────────────────────────────────────────────┘
+[11:00:37 AM] 
+[11:00:37 AM] 📍 Destination: /app/order-service.{"clientCode":"IPP2","symbol":"NPL","side":"Buy","refNo":0,"price":0,"volume":500,"triggerPrice":0,"orderType":"MKT","marketType":"REG","userId":"IPP2","actionType":"neworder","orignateSource":"W","discVolume":0,"orderProperty":111,"subClientCode":""}
+[11:00:37 AM] 
+[11:00:37 AM] ✅ Order sent successfully
+[11:00:37 AM] ⏳ Waiting for server response...
+[11:00:37 AM] 
+[11:00:37 AM] ════════════════════════════════════════════════════════════════════════════════
+[11:00:37 AM] 📨 ORDER RESPONSE RECEIVED:
+[11:00:37 AM] ────────────────────────────────────────────────────────────────────────────────
+[11:00:37 AM] Raw message body:
+[11:00:37 AM] {"userId":"IPP2","orderNo":"2581589","time":"11:00:37","timeMobile":"Thursday, January 22 2026 11:00:37 AM","message":"New Buy order of 500 NPL in KSE at 87.80000305175781 for IPP2 is received.","action":"Buy","market":false,"refNo":"0","status":"ACKNOWLEDGED","price":null,"quantity":null,"symbol":null,"triggerPrice":null}
+[11:00:37 AM] 
+[11:00:37 AM] Parsed message:
+[11:00:37 AM] {
+  "userId": "IPP2",
+  "orderNo": "2581589",
+  "time": "11:00:37",
+  "timeMobile": "Thursday, January 22 2026 11:00:37 AM",
+  "message": "New Buy order of 500 NPL in KSE at 87.80000305175781 for IPP2 is received.",
+  "action": "Buy",
+  "market": false,
+  "refNo": "0",
+  "status": "ACKNOWLEDGED",
+  "price": null,
+  "quantity": null,
+  "symbol": null,
+  "triggerPrice": null
+}
+[11:00:37 AM] ════════════════════════════════════════════════════════════════════════════════
+[11:00:37 AM] 
+[11:00:37 AM] ════════════════════════════════════════════════════════════════════════════════
+[11:00:37 AM] 📨 ORDER RESPONSE RECEIVED:
+[11:00:37 AM] ────────────────────────────────────────────────────────────────────────────────
+[11:00:37 AM] Raw message body:
+[11:00:37 AM] {"userId":"IPP2","clientCode":"IPP2","currentDate":"11:00:37","msgDate":"Thursday, January 22 2026 11:00:37 AM","message":"TRADE 0101000001451219. Bought 100 NPL in 01 at 87.84 for IPP2 order 2581589 with exchSecondaryOrderId  exchSecondaryTradeId ","action":"Buy","orderNo":"2581589","time":"11:00:37","refNo":"0","status":"ACTIVATE","quantity":"100","price":"87.84","exchSecondaryOrderId":"","symbol":"NPL","exchangeCode":"01","orderType":null,"type":"TC","exchSecondaryTradeId":""}
+[11:00:37 AM] 
+[11:00:37 AM] Parsed message:
+[11:00:37 AM] {
+  "userId": "IPP2",
+  "clientCode": "IPP2",
+  "currentDate": "11:00:37",
+  "msgDate": "Thursday, January 22 2026 11:00:37 AM",
+  "message": "TRADE 0101000001451219. Bought 100 NPL in 01 at 87.84 for IPP2 order 2581589 with exchSecondaryOrderId  exchSecondaryTradeId ",
+  "action": "Buy",
+  "orderNo": "2581589",
+  "time": "11:00:37",
+  "refNo": "0",
+  "status": "ACTIVATE",
+  "quantity": "100",
+  "price": "87.84",
+  "exchSecondaryOrderId": "",
+  "symbol": "NPL",
+  "exchangeCode": "01",
+  "orderType": null,
+  "type": "TC",
+  "exchSecondaryTradeId": ""
+}
+[11:00:37 AM] ════════════════════════════════════════════════════════════════════════════════
+[11:00:37 AM] 
+[11:00:37 AM] ════════════════════════════════════════════════════════════════════════════════
+[11:00:37 AM] 📨 ORDER RESPONSE RECEIVED:
+[11:00:37 AM] ────────────────────────────────────────────────────────────────────────────────
+[11:00:37 AM] Raw message body:
+[11:00:37 AM] {"userId":"IPP2","clientCode":"IPP2","currentDate":"11:00:37","msgDate":"Thursday, January 22 2026 11:00:37 AM","message":"TRADE 0101000001451215. Bought 51 NPL in 01 at 87.8 for IPP2 order 2581589 with exchSecondaryOrderId  exchSecondaryTradeId ","action":"Buy","orderNo":"2581589","time":"11:00:37","refNo":"0","status":"ACTIVATE","quantity":"51","price":"87.8","exchSecondaryOrderId":"","symbol":"NPL","exchangeCode":"01","orderType":null,"type":"TC","exchSecondaryTradeId":""}
+[11:00:37 AM] 
+[11:00:37 AM] Parsed message:
+[11:00:37 AM] {
+  "userId": "IPP2",
+  "clientCode": "IPP2",
+  "currentDate": "11:00:37",
+  "msgDate": "Thursday, January 22 2026 11:00:37 AM",
+  "message": "TRADE 0101000001451215. Bought 51 NPL in 01 at 87.8 for IPP2 order 2581589 with exchSecondaryOrderId  exchSecondaryTradeId ",
+  "action": "Buy",
+  "orderNo": "2581589",
+  "time": "11:00:37",
+  "refNo": "0",
+  "status": "ACTIVATE",
+  "quantity": "51",
+  "price": "87.8",
+  "exchSecondaryOrderId": "",
+  "symbol": "NPL",
+  "exchangeCode": "01",
+  "orderType": null,
+  "type": "TC",
+  "exchSecondaryTradeId": ""
+}
+[11:00:37 AM] ════════════════════════════════════════════════════════════════════════════════
+[11:00:37 AM] 
+[11:00:37 AM] ════════════════════════════════════════════════════════════════════════════════
+[11:00:37 AM] 📨 ORDER RESPONSE RECEIVED:
+[11:00:37 AM] ────────────────────────────────────────────────────────────────────────────────
+[11:00:37 AM] Raw message body:
+[11:00:37 AM] {"userId":"IPP2","clientCode":"IPP2","currentDate":"11:00:37","msgDate":"Thursday, January 22 2026 11:00:37 AM","message":"Buy 500 Order Of NPL at .00 for IPP2 order 2581589 is QUEUE and exchSecondaryOrderId is ","action":"Buy","orderNo":"2581589","time":"11:00:37","refNo":"0","status":"QUEUE","quantity":"500","price":".00","exchSecondaryOrderId":"","symbol":"NPL","exchangeCode":"01","orderType":"3","type":"OD","seqNo":"250289826","exchSecondaryTradeId":null}
+[11:00:37 AM] 
+[11:00:37 AM] Parsed message:
+[11:00:37 AM] {
+  "userId": "IPP2",
+  "clientCode": "IPP2",
+  "currentDate": "11:00:37",
+  "msgDate": "Thursday, January 22 2026 11:00:37 AM",
+  "message": "Buy 500 Order Of NPL at .00 for IPP2 order 2581589 is QUEUE and exchSecondaryOrderId is ",
+  "action": "Buy",
+  "orderNo": "2581589",
+  "time": "11:00:37",
+  "refNo": "0",
+  "status": "QUEUE",
+  "quantity": "500",
+  "price": ".00",
+  "exchSecondaryOrderId": "",
+  "symbol": "NPL",
+  "exchangeCode": "01",
+  "orderType": "3",
+  "type": "OD",
+  "seqNo": "250289826",
+  "exchSecondaryTradeId": null
+}
+[11:00:37 AM] ════════════════════════════════════════════════════════════════════════════════
+[11:00:37 AM] 
+[11:00:37 AM] ════════════════════════════════════════════════════════════════════════════════
+[11:00:37 AM] 📨 ORDER RESPONSE RECEIVED:
+[11:00:37 AM] ────────────────────────────────────────────────────────────────────────────────
+[11:00:37 AM] Raw message body:
+[11:00:37 AM] {"userId":"IPP2","clientCode":"IPP2","currentDate":"11:00:37","msgDate":"Thursday, January 22 2026 11:00:37 AM","message":"TRADE 0101000001451221. Bought 309 NPL in 01 at 87.85 for IPP2 order 2581589 with exchSecondaryOrderId  exchSecondaryTradeId ","action":"Buy","orderNo":"2581589","time":"11:00:37","refNo":"0","status":"ACTIVATE","quantity":"309","price":"87.85","exchSecondaryOrderId":"","symbol":"NPL","exchangeCode":"01","orderType":null,"type":"TC","exchSecondaryTradeId":""}
+[11:00:37 AM] 
+[11:00:37 AM] Parsed message:
+[11:00:37 AM] {
+  "userId": "IPP2",
+  "clientCode": "IPP2",
+  "currentDate": "11:00:37",
+  "msgDate": "Thursday, January 22 2026 11:00:37 AM",
+  "message": "TRADE 0101000001451221. Bought 309 NPL in 01 at 87.85 for IPP2 order 2581589 with exchSecondaryOrderId  exchSecondaryTradeId ",
+  "action": "Buy",
+  "orderNo": "2581589",
+  "time": "11:00:37",
+  "refNo": "0",
+  "status": "ACTIVATE",
+  "quantity": "309",
+  "price": "87.85",
+  "exchSecondaryOrderId": "",
+  "symbol": "NPL",
+  "exchangeCode": "01",
+  "orderType": null,
+  "type": "TC",
+  "exchSecondaryTradeId": ""
+}
+[11:00:37 AM] ════════════════════════════════════════════════════════════════════════════════
+[11:00:37 AM] 
+[11:00:38 AM] ════════════════════════════════════════════════════════════════════════════════
+[11:00:38 AM] 📨 ORDER RESPONSE RECEIVED:
+[11:00:38 AM] ────────────────────────────────────────────────────────────────────────────────
+[11:00:38 AM] Raw message body:
+[11:00:38 AM] {"userId":"IPP2","clientCode":"IPP2","currentDate":"11:00:37","msgDate":"Thursday, January 22 2026 11:00:37 AM","message":"TRADE 0101000001451217. Bought 40 NPL in 01 at 87.83 for IPP2 order 2581589 with exchSecondaryOrderId  exchSecondaryTradeId ","action":"Buy","orderNo":"2581589","time":"11:00:37","refNo":"0","status":"ACTIVATE","quantity":"40","price":"87.83","exchSecondaryOrderId":"","symbol":"NPL","exchangeCode":"01","orderType":null,"type":"TC","exchSecondaryTradeId":""}
+[11:00:38 AM] 
+[11:00:38 AM] Parsed message:
+[11:00:38 AM] {
+  "userId": "IPP2",
+  "clientCode": "IPP2",
+  "currentDate": "11:00:37",
+  "msgDate": "Thursday, January 22 2026 11:00:37 AM",
+  "message": "TRADE 0101000001451217. Bought 40 NPL in 01 at 87.83 for IPP2 order 2581589 with exchSecondaryOrderId  exchSecondaryTradeId ",
+  "action": "Buy",
+  "orderNo": "2581589",
+  "time": "11:00:37",
+  "refNo": "0",
+  "status": "ACTIVATE",
+  "quantity": "40",
+  "price": "87.83",
+  "exchSecondaryOrderId": "",
+  "symbol": "NPL",
+  "exchangeCode": "01",
+  "orderType": null,
+  "type": "TC",
+  "exchSecondaryTradeId": ""
+}
+[11:00:38 AM] ════════════════════════════════════════════════════════════════════════════════
+[11:00:38 AM] 
+[11:00:38 AM] ┌──────────────────────────────────────────────────────────────────────────────┐
+[11:00:38 AM] │ 📤 PLACING ORDER:
+[11:00:38 AM] ├──────────────────────────────────────────────────────────────────────────────┤
+[11:00:38 AM] │ Symbol: NPL-JAN
+[11:00:38 AM] │ Side: Buy
+[11:00:38 AM] │ Type: SHS / FUT
+[11:00:38 AM] │ Volume: 500
+[11:00:38 AM] │ Price: 88.1
+[11:00:38 AM] │ Order Property: 111
+[11:00:38 AM] ├──────────────────────────────────────────────────────────────────────────────┤
+[11:00:38 AM] │ Full payload:
+[11:00:38 AM] {
+  "clientCode": "IPP2",
+  "symbol": "NPL-JAN",
+  "side": "Buy",
+  "refNo": 0,
+  "price": 88.1,
+  "volume": 500,
+  "triggerPrice": 0,
+  "orderType": "SHS",
+  "marketType": "FUT",
+  "userId": "IPP2",
+  "actionType": "neworder",
+  "orignateSource": "W",
+  "discVolume": 0,
+  "orderProperty": 111,
+  "subClientCode": ""
+}
+[11:00:38 AM] └──────────────────────────────────────────────────────────────────────────────┘
+[11:00:38 AM] 
+[11:00:38 AM] 📍 Destination: /app/order-service.{"clientCode":"IPP2","symbol":"NPL-JAN","side":"Buy","refNo":0,"price":88.1,"volume":500,"triggerPrice":0,"orderType":"SHS","marketType":"FUT","userId":"IPP2","actionType":"neworder","orignateSource":"W","discVolume":0,"orderProperty":111,"subClientCode":""}
+[11:00:38 AM] 
+[11:00:38 AM] ✅ Order sent successfully
+[11:00:38 AM] ⏳ Waiting for server response...
+[11:00:38 AM] 
+[11:00:38 AM] ✅ F4: BUY NPL (500@REG) + SHORT SELL NPL-JAN (500@FUT@88.1)
+[11:00:38 AM] ════════════════════════════════════════════════════════════════════════════════
+[11:00:38 AM] 📨 ORDER RESPONSE RECEIVED:
+[11:00:38 AM] ────────────────────────────────────────────────────────────────────────────────
+[11:00:38 AM] Raw message body:
+[11:00:38 AM] {"userId":"IPP2","orderNo":"2581590","time":"11:00:38","timeMobile":"Thursday, January 22 2026 11:00:38 AM","message":"New SHORT SELL order of 500 NPL-JAN in KSE at 88.1 for IPP2 is received.","action":"Buy","market":false,"refNo":"0","status":"ACKNOWLEDGED","price":null,"quantity":null,"symbol":null,"triggerPrice":null}
+[11:00:38 AM] 
+[11:00:38 AM] Parsed message:
+[11:00:38 AM] {
+  "userId": "IPP2",
+  "orderNo": "2581590",
+  "time": "11:00:38",
+  "timeMobile": "Thursday, January 22 2026 11:00:38 AM",
+  "message": "New SHORT SELL order of 500 NPL-JAN in KSE at 88.1 for IPP2 is received.",
+  "action": "Buy",
+  "market": false,
+  "refNo": "0",
+  "status": "ACKNOWLEDGED",
+  "price": null,
+  "quantity": null,
+  "symbol": null,
+  "triggerPrice": null
+}
+[11:00:38 AM] ════════════════════════════════════════════════════════════════════════════════
+[11:00:38 AM] 
+[11:00:38 AM] ════════════════════════════════════════════════════════════════════════════════
+[11:00:38 AM] 📨 ORDER RESPONSE RECEIVED:
+[11:00:38 AM] ────────────────────────────────────────────────────────────────────────────────
+[11:00:38 AM] Raw message body:
+[11:00:38 AM] {"userId":"IPP2","clientCode":"IPP2","currentDate":"11:00:38","msgDate":"Thursday, January 22 2026 11:00:38 AM","message":"Sell 500 Order Of NPL-JAN at 88.10 for IPP2 order 2581590 is QUEUE and exchSecondaryOrderId is ","action":"Sell","orderNo":"2581590","time":"11:00:38","refNo":"0","status":"QUEUE","quantity":"500","price":"88.10","exchSecondaryOrderId":"","symbol":"NPL-JAN","exchangeCode":"01","orderType":"8","type":"OD","seqNo":"250289827","exchSecondaryTradeId":null}
+[11:00:38 AM] 
+[11:00:38 AM] Parsed message:
+[11:00:38 AM] {
+  "userId": "IPP2",
+  "clientCode": "IPP2",
+  "currentDate": "11:00:38",
+  "msgDate": "Thursday, January 22 2026 11:00:38 AM",
+  "message": "Sell 500 Order Of NPL-JAN at 88.10 for IPP2 order 2581590 is QUEUE and exchSecondaryOrderId is ",
+  "action": "Sell",
+  "orderNo": "2581590",
+  "time": "11:00:38",
+  "refNo": "0",
+  "status": "QUEUE",
+  "quantity": "500",
+  "price": "88.10",
+  "exchSecondaryOrderId": "",
+  "symbol": "NPL-JAN",
+  "exchangeCode": "01",
+  "orderType": "8",
+  "type": "OD",
+  "seqNo": "250289827",
+  "exchSecondaryTradeId": null
+}
+[11:00:38 AM] ════════════════════════════════════════════════════════════════════════════════
+[11:00:38 AM] 
+[11:00:38 AM] ════════════════════════════════════════════════════════════════════════════════
+[11:00:38 AM] 📨 ORDER RESPONSE RECEIVED:
+[11:00:38 AM] ────────────────────────────────────────────────────────────────────────────────
+[11:00:38 AM] Raw message body:
+[11:00:38 AM] {"userId":"IPP2","clientCode":"IPP2","currentDate":"11:00:38","msgDate":"Thursday, January 22 2026 11:00:38 AM","message":"TRADE 0101000001451395. Sold 500 NPL-JAN in 01 at 88.1 for IPP2 order 2581590 with exchSecondaryOrderId  exchSecondaryTradeId ","action":"Sell","orderNo":"2581590","time":"11:00:38","refNo":"0","status":"ACTIVATE","quantity":"500","price":"88.1","exchSecondaryOrderId":"","symbol":"NPL-JAN","exchangeCode":"01","orderType":null,"type":"TC","exchSecondaryTradeId":""}
+[11:00:38 AM] 
+[11:00:38 AM] Parsed message:
+[11:00:38 AM] {
+  "userId": "IPP2",
+  "clientCode": "IPP2",
+  "currentDate": "11:00:38",
+  "msgDate": "Thursday, January 22 2026 11:00:38 AM",
+  "message": "TRADE 0101000001451395. Sold 500 NPL-JAN in 01 at 88.1 for IPP2 order 2581590 with exchSecondaryOrderId  exchSecondaryTradeId ",
+  "action": "Sell",
+  "orderNo": "2581590",
+  "time": "11:00:38",
+  "refNo": "0",
+  "status": "ACTIVATE",
+  "quantity": "500",
+  "price": "88.1",
+  "exchSecondaryOrderId": "",
+  "symbol": "NPL-JAN",
+  "exchangeCode": "01",
+  "orderType": null,
+  "type": "TC",
+  "exchSecondaryTradeId": ""
+}
+[11:00:38 AM] ════════════════════════════════════════════════════════════════════════════════
+[11:00:38 AM] 
+[12:09:02 PM] 🔔 F5 TRIGGERED: NPL-JAN-NPL - Minor: 0.2500 <= 0.2600
+[12:09:02 PM] ┌──────────────────────────────────────────────────────────────────────────────┐
+[12:09:02 PM] │ 📤 PLACING ORDER:
+[12:09:02 PM] ├──────────────────────────────────────────────────────────────────────────────┤
+[12:09:02 PM] │ Symbol: NPL-JAN
+[12:09:02 PM] │ Side: BUY
+[12:09:02 PM] │ Type: MKT / FUT
+[12:09:02 PM] │ Volume: 500
+[12:09:02 PM] │ Price: 0
+[12:09:02 PM] │ Order Property: 111
+[12:09:02 PM] ├──────────────────────────────────────────────────────────────────────────────┤
+[12:09:02 PM] │ Full payload:
+[12:09:02 PM] {
+  "clientCode": "IPP2",
+  "symbol": "NPL-JAN",
+  "side": "BUY",
+  "refNo": 0,
+  "price": 0,
+  "volume": 500,
+  "triggerPrice": 0,
+  "orderType": "MKT",
+  "marketType": "FUT",
+  "userId": "IPP2",
+  "actionType": "neworder",
+  "orignateSource": "W",
+  "discVolume": 0,
+  "orderProperty": 111,
+  "subClientCode": ""
+}
+[12:09:02 PM] └──────────────────────────────────────────────────────────────────────────────┘
+[12:09:02 PM] 
+[12:09:02 PM] 📍 Destination: /app/order-service.{"clientCode":"IPP2","symbol":"NPL-JAN","side":"BUY","refNo":0,"price":0,"volume":500,"triggerPrice":0,"orderType":"MKT","marketType":"FUT","userId":"IPP2","actionType":"neworder","orignateSource":"W","discVolume":0,"orderProperty":111,"subClientCode":""}
+[12:09:02 PM] 
+[12:09:02 PM] ✅ Order sent successfully
+[12:09:02 PM] ⏳ Waiting for server response...
+[12:09:02 PM] 
+[12:09:02 PM] ┌──────────────────────────────────────────────────────────────────────────────┐
+[12:09:02 PM] │ 📤 PLACING ORDER:
+[12:09:02 PM] ├──────────────────────────────────────────────────────────────────────────────┤
+[12:09:02 PM] │ Symbol: NPL
+[12:09:02 PM] │ Side: SELL
+[12:09:02 PM] │ Type: MKT / REG
+[12:09:02 PM] │ Volume: 500
+[12:09:02 PM] │ Price: 0
+[12:09:02 PM] │ Order Property: 111
+[12:09:02 PM] ├──────────────────────────────────────────────────────────────────────────────┤
+[12:09:02 PM] │ Full payload:
+[12:09:02 PM] {
+  "clientCode": "IPP2",
+  "symbol": "NPL",
+  "side": "SELL",
+  "refNo": 0,
+  "price": 0,
+  "volume": 500,
+  "triggerPrice": 0,
+  "orderType": "MKT",
+  "marketType": "REG",
+  "userId": "IPP2",
+  "actionType": "neworder",
+  "orignateSource": "W",
+  "discVolume": 0,
+  "orderProperty": 111,
+  "subClientCode": ""
+}
+[12:09:02 PM] └──────────────────────────────────────────────────────────────────────────────┘
+[12:09:02 PM] 
+[12:09:02 PM] 📍 Destination: /app/order-service.{"clientCode":"IPP2","symbol":"NPL","side":"SELL","refNo":0,"price":0,"volume":500,"triggerPrice":0,"orderType":"MKT","marketType":"REG","userId":"IPP2","actionType":"neworder","orignateSource":"W","discVolume":0,"orderProperty":111,"subClientCode":""}
+[12:09:02 PM] 
+[12:09:02 PM] ✅ Order sent successfully
+[12:09:02 PM] ⏳ Waiting for server response...
+[12:09:02 PM] 
+[12:09:02 PM] ✅ F5: BUY NPL-JAN (500@FUT) + SELL NPL (500@REG)
+[12:09:02 PM] ════════════════════════════════════════════════════════════════════════════════
+[12:09:02 PM] 📨 ORDER RESPONSE RECEIVED:
+[12:09:02 PM] ────────────────────────────────────────────────────────────────────────────────
+[12:09:02 PM] Raw message body:
+[12:09:02 PM] {"userId":"IPP2","orderNo":null,"time":"12:09:02","timeMobile":"Thursday, January 22 2026 12:09:02 PM","message":"You can't place this order because you already have a pending Buy order with same rate.","action":"Sell","market":false,"refNo":"0","status":"LOCAL_REJECT","price":null,"quantity":null,"symbol":null,"triggerPrice":null}
+[12:09:02 PM] 
+[12:09:02 PM] Parsed message:
+[12:09:02 PM] {
+  "userId": "IPP2",
+  "orderNo": null,
+  "time": "12:09:02",
+  "timeMobile": "Thursday, January 22 2026 12:09:02 PM",
+  "message": "You can't place this order because you already have a pending Buy order with same rate.",
+  "action": "Sell",
+  "market": false,
+  "refNo": "0",
+  "status": "LOCAL_REJECT",
+  "price": null,
+  "quantity": null,
+  "symbol": null,
+  "triggerPrice": null
+}
+[12:09:02 PM] ════════════════════════════════════════════════════════════════════════════════
+[12:09:02 PM] 
+[12:09:02 PM] ════════════════════════════════════════════════════════════════════════════════
+[12:09:02 PM] 📨 ORDER RESPONSE RECEIVED:
+[12:09:02 PM] ────────────────────────────────────────────────────────────────────────────────
+[12:09:02 PM] Raw message body:
+[12:09:02 PM] {"userId":"IPP2","orderNo":null,"time":"12:09:02","timeMobile":"Thursday, January 22 2026 12:09:02 PM","message":"INVALID ORDER! IPP2 does not possess sufficient holding, available holding is 0, while order volume is 500, use F8 to place short sell order.","action":"Sell","market":false,"refNo":null,"status":null,"price":null,"quantity":null,"symbol":null,"triggerPrice":null}
+[12:09:02 PM] 
+[12:09:02 PM] Parsed message:
+[12:09:02 PM] {
+  "userId": "IPP2",
+  "orderNo": null,
+  "time": "12:09:02",
+  "timeMobile": "Thursday, January 22 2026 12:09:02 PM",
+  "message": "INVALID ORDER! IPP2 does not possess sufficient holding, available holding is 0, while order volume is 500, use F8 to place short sell order.",
+  "action": "Sell",
+  "market": false,
+  "refNo": null,
+  "status": null,
+  "price": null,
+  "quantity": null,
+  "symbol": null,
+  "triggerPrice": null
+}
+[12:09:02 PM] ════════════════════════════════════════════════════════════════════════════════
+[12:09:02 PM] 
+[1:11:36 PM] ════════════════════════════════════════════════════════════════════════════════
+[1:11:36 PM] 📨 ORDER RESPONSE RECEIVED:
+[1:11:36 PM] ────────────────────────────────────────────────────────────────────────────────
+[1:11:36 PM] Raw message body:
+[1:11:36 PM] {"userId":"IPP2","orderNo":null,"time":"01:11:36","timeMobile":"Thursday, January 22 2026 01:11:36 PM","message":"INVALID ORDER! IPP2 does not possess sufficient holding, available holding is 0, while order volume is 1000, use F8 to place short sell order.","action":"Sell","market":false,"refNo":null,"status":null,"price":null,"quantity":null,"symbol":null,"triggerPrice":null}
+[1:11:36 PM] 
+[1:11:36 PM] Parsed message:
+[1:11:36 PM] {
+  "userId": "IPP2",
+  "orderNo": null,
+  "time": "01:11:36",
+  "timeMobile": "Thursday, January 22 2026 01:11:36 PM",
+  "message": "INVALID ORDER! IPP2 does not possess sufficient holding, available holding is 0, while order volume is 1000, use F8 to place short sell order.",
+  "action": "Sell",
+  "market": false,
+  "refNo": null,
+  "status": null,
+  "price": null,
+  "quantity": null,
+  "symbol": null,
+  "triggerPrice": null
+}
+[1:11:36 PM] ════════════════════════════════════════════════════════════════════════════════
+[1:11:36 PM] 
+[1:12:21 PM] ════════════════════════════════════════════════════════════════════════════════
+[1:12:21 PM] 📨 ORDER RESPONSE RECEIVED:
+[1:12:21 PM] ────────────────────────────────────────────────────────────────────────────────
+[1:12:21 PM] Raw message body:
+[1:12:21 PM] {"userId":"IPP2","orderNo":null,"time":"01:12:21","timeMobile":"Thursday, January 22 2026 01:12:21 PM","message":"INVALID ORDER! IPP2 does not possess sufficient holding, available holding is 0, while order volume is 1000, use F8 to place short sell order.","action":"Sell","market":false,"refNo":null,"status":null,"price":null,"quantity":null,"symbol":null,"triggerPrice":null}
+[1:12:21 PM] 
+[1:12:21 PM] Parsed message:
+[1:12:21 PM] {
+  "userId": "IPP2",
+  "orderNo": null,
+  "time": "01:12:21",
+  "timeMobile": "Thursday, January 22 2026 01:12:21 PM",
+  "message": "INVALID ORDER! IPP2 does not possess sufficient holding, available holding is 0, while order volume is 1000, use F8 to place short sell order.",
+  "action": "Sell",
+  "market": false,
+  "refNo": null,
+  "status": null,
+  "price": null,
+  "quantity": null,
+  "symbol": null,
+  "triggerPrice": null
+}
+[1:12:21 PM] ════════════════════════════════════════════════════════════════════════════════
+[1:12:21 PM] 
+[1:12:33 PM] ════════════════════════════════════════════════════════════════════════════════
+[1:12:33 PM] 📨 ORDER RESPONSE RECEIVED:
+[1:12:33 PM] ────────────────────────────────────────────────────────────────────────────────
+[1:12:33 PM] Raw message body:
+[1:12:33 PM] {"userId":"IPP2","orderNo":null,"time":"01:12:33","timeMobile":"Thursday, January 22 2026 01:12:33 PM","message":"INVALID ORDER! IPP2 does not possess sufficient holding, available holding is 0, while order volume is 1000, use F8 to place short sell order.","action":"Sell","market":false,"refNo":null,"status":null,"price":null,"quantity":null,"symbol":null,"triggerPrice":null}
+[1:12:33 PM] 
+[1:12:33 PM] Parsed message:
+[1:12:33 PM] {
+  "userId": "IPP2",
+  "orderNo": null,
+  "time": "01:12:33",
+  "timeMobile": "Thursday, January 22 2026 01:12:33 PM",
+  "message": "INVALID ORDER! IPP2 does not possess sufficient holding, available holding is 0, while order volume is 1000, use F8 to place short sell order.",
+  "action": "Sell",
+  "market": false,
+  "refNo": null,
+  "status": null,
+  "price": null,
+  "quantity": null,
+  "symbol": null,
+  "triggerPrice": null
+}
+[1:12:33 PM] ════════════════════════════════════════════════════════════════════════════════
+[1:12:33 PM] 
+[1:13:50 PM] ════════════════════════════════════════════════════════════════════════════════
+[1:13:50 PM] 📨 ORDER RESPONSE RECEIVED:
+[1:13:50 PM] ────────────────────────────────────────────────────────────────────────────────
+[1:13:50 PM] Raw message body:
+[1:13:50 PM] {"userId":"IPP2","orderNo":null,"time":"01:13:50","timeMobile":"Thursday, January 22 2026 01:13:50 PM","message":"INVALID ORDER! IPP2 does not possess sufficient holding, available holding is 0, while order volume is 50, use F8 to place short sell order.","action":"Sell","market":false,"refNo":null,"status":null,"price":null,"quantity":null,"symbol":null,"triggerPrice":null}
+[1:13:50 PM] 
+[1:13:50 PM] Parsed message:
+[1:13:50 PM] {
+  "userId": "IPP2",
+  "orderNo": null,
+  "time": "01:13:50",
+  "timeMobile": "Thursday, January 22 2026 01:13:50 PM",
+  "message": "INVALID ORDER! IPP2 does not possess sufficient holding, available holding is 0, while order volume is 50, use F8 to place short sell order.",
+  "action": "Sell",
+  "market": false,
+  "refNo": null,
+  "status": null,
+  "price": null,
+  "quantity": null,
+  "symbol": null,
+  "triggerPrice": null
+}
+[1:13:50 PM] ════════════════════════════════════════════════════════════════════════════════
+[1:13:50 PM] 
+[1:54:28 PM] 🛑 Disconnecting Order WebSocket...
+[1:54:28 PM] ✅ Order WebSocket disconnected

@@ -28,7 +28,7 @@ function logToOrderFile(message) {
 
 // Authentication credentials
 const authHeaders = {
-    'id': '10020',
+    'id': 'IPP2',
     'nostr': 'Lahore123'
 };
 
@@ -156,7 +156,7 @@ function placeOrder(orderParams) {
     }
     
     const payload = {
-        clientCode: clientCode,
+        clientCode: authHeaders.id,
         symbol: symbol,
         side: side,
         refNo: 0,

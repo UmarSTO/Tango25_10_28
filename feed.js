@@ -591,7 +591,7 @@ function sendHistogramUpdate() {
             
             // Calculate Min Gap and Price for this symbol combination
             const priceValue = matchingMain.lt && matchingMain.lt.x ? matchingMain.lt.x : 0;
-            const minGapValue = priceValue ? (parseFloat(priceValue) * 0.00223).toFixed(3) : '0.000';
+            const minGapValue = priceValue ? (parseFloat(priceValue) * 0.0005).toFixed(3) : '0.000';
             const priceDisplayValue = priceValue ? parseFloat(priceValue).toFixed(1) : '0.0';
             
             symbolMinGaps[symbolKey] = minGapValue;
